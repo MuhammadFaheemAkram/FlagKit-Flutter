@@ -1,0 +1,29 @@
+name: flagkit
+description: >-
+  A small feature flag SDK for Flutter apps: typed synchronous reads, an
+  offline-first cache, remote refresh, percentage rollouts and targeting,
+  with a fake backend.
+version: 0.1.0
+repository: https://github.com/MuhammadFaheemAkram/FlagKit-Flutter
+issue_tracker: https://github.com/MuhammadFaheemAkram/FlagKit-Flutter/issues
+topics: [feature-flags, remote-config, sdk, rollout, offline]
+
+environment:
+  sdk: ^3.13.5
+  flutter: ">=3.47.0"
+
+# A member of the workspace, resolved with the sample app (one lockfile at
+# the root).
+resolution: workspace
+
+# Every dependency here becomes a dependency of every app that adds the SDK,
+# so the list stays short, and each constraint is a caret on a major version
+# (an app pins exact versions in its lockfile; a library must not).
+dependencies:
+  flutter:
+    sdk: flutter
+  meta: ^1.16.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
