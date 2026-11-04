@@ -1,8 +1,9 @@
 import 'dart:io';
 
-// The only import an app has. Nothing from lib/src/ here: this file sees
+// The only imports an app has (the second in its tests). Nothing from lib/src/ here: this file sees
 // the SDK exactly as a host does.
 import 'package:flagkit/flagkit.dart';
+import 'package:flagkit/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // The public API is a promise: a name in it can't change or go without a
@@ -12,33 +13,40 @@ import 'package:flutter_test/flutter_test.dart';
 // to compile too), and lists the exports (so adding a name is a reviewed
 // change to this test).
 void main() {
-  test('lib/flagkit.dart exports exactly these names', () {
-    final library = File('lib/flagkit.dart').readAsStringSync();
-    final shown = RegExp(r'show\s+([^;]+);')
-        .allMatches(library)
-        .expand((match) => match.group(1)!.split(','))
-        .map((name) => name.trim())
-        .toList();
+  for (final (path, names) in [
+    ('lib/flagkit.dart', _exported),
+    ('lib/testing.dart', _testing),
+  ]) {
+    test('$path exports exactly these names', () {
+      final library = File(path).readAsStringSync();
+      final shown = RegExp(r'show\s+([^;]+);')
+          .allMatches(library)
+          .expand((match) => match.group(1)!.split(','))
+          .map((name) => name.trim())
+          .toList();
 
-    expect(shown, unorderedEquals(_exported));
-    expect(shown, hasLength(_exported.length), reason: 'no name twice');
-    expect(
-      RegExp(r'^export ', multiLine: true).allMatches(library).length,
-      RegExp(r'show\s').allMatches(library).length,
-      reason: 'every export has a show list: nothing leaks by accident',
-    );
-  });
+      expect(shown, unorderedEquals(names));
+      expect(shown, hasLength(names.length), reason: 'no name twice');
+      expect(
+        RegExp(r'^export ', multiLine: true).allMatches(library).length,
+        RegExp(r'show\s').allMatches(library).length,
+        reason: 'every export has a show list: nothing leaks by accident',
+      );
+    });
+  }
 
-  test('lib/ has only the public library', () {
+  test('lib/ has only the two libraries', () {
     final libraries = Directory('lib')
         .listSync()
         .whereType<File>()
         .map((file) => file.uri.pathSegments.last);
 
-    expect(libraries, unorderedEquals(['flagkit.dart']));
+    expect(libraries, unorderedEquals(['flagkit.dart', 'testing.dart']));
   });
 
   test('every name is usable from a host', () async {
+    FlagKitTesting.useInMemoryDatabase();
+    addTearDown(FlagKitTesting.useDeviceDatabase);
     const config = FlagKitConfig(
       apiKey: 'demo_key',
       refreshInterval: Duration(minutes: 5),
@@ -71,6 +79,11 @@ void main() {
     expect(changes.isBroadcast, isTrue);
     expect(describe(await FlagKit.refresh()), isNotEmpty);
     await FlagKit.clearCache();
+    final FlagKitDebug debug = FlagKit.debug;
+    final FlagKitStats stats = await debug.watchStats().first;
+    expect(describeStatus(stats.cacheStatus), isNotEmpty);
+    expect(stats.flagCount, 0);
+    expect(stats.anonymousId, isNotEmpty);
     expect(FlagKit.version, matches(RegExp(r'^\d+\.\d+\.\d+$')));
 
     for (final value in <FlagValue>[
@@ -101,6 +114,9 @@ void main() {
 
 const _exported = [
   'FlagKit',
+  'FlagKitDebug',
+  'FlagKitStats',
+  'CacheStatus',
   'FlagKitClient',
   'FlagKitConfig',
   'EvaluationContext',
@@ -122,6 +138,8 @@ const _exported = [
   'Unauthorized',
   'NotInitialized',
 ];
+
+const _testing = ['FlagKitTesting'];
 
 // What a host might show for each. Exhaustive with no default: a new case
 // is a compile error here, as it would be in every such app.
@@ -171,4 +189,11 @@ String describeReason(EvaluationReason reason) => switch (reason) {
   EvaluationReason.notInitialized => 'not running',
   EvaluationReason.flagNotFound => 'unknown flag',
   EvaluationReason.typeMismatch => 'wrong type',
+};
+
+String describeStatus(CacheStatus status) => switch (status) {
+  CacheStatus.fresh => 'up to date',
+  CacheStatus.stale => 'due for a refresh',
+  CacheStatus.expired => 'old, refreshing',
+  CacheStatus.empty => 'nothing cached',
 };

@@ -137,6 +137,41 @@ void main() {
       expect(reasons, ReadingReason.values.toSet());
     });
 
+    test('the cache, in the app\'s words, for every status', () async {
+      final seen = <CacheInfo>[];
+      final subscription = debug.watchCache().listen(seen.add);
+      addTearDown(subscription.cancel);
+      final at = DateTime.utc(2026, 11, 4, 9, 41);
+
+      for (final status in CacheStatus.values) {
+        client.debug.emit(
+          FlagKitStats(
+            cacheStatus: status,
+            flagCount: 6,
+            anonymousId: 'anon-1',
+            fetchedAt: at,
+          ),
+        );
+      }
+      await pumpEventQueue();
+
+      expect(seen.map((c) => c.state), [
+        CacheState.fresh,
+        CacheState.stale,
+        CacheState.expired,
+        CacheState.empty,
+      ]);
+      expect(
+        seen.first,
+        CacheInfo(
+          state: CacheState.fresh,
+          flagCount: 6,
+          installId: 'anon-1',
+          fetchedAt: at,
+        ),
+      );
+    });
+
     test('watch() fires on any change', () async {
       var fired = 0;
       final subscription = debug.watch().listen((_) => fired++);

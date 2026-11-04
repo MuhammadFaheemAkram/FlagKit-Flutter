@@ -15,7 +15,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DashboardState {
 
- String get sdkVersion; List<FlagReading> get readings;
+ String get sdkVersion; List<FlagReading> get readings;/// The SDK's cache, once it has answered (a moment after the screen
+/// opens: it is a database query).
+ CacheInfo? get cache;
 /// Create a copy of DashboardState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +29,20 @@ $DashboardStateCopyWith<DashboardState> get copyWith => _$DashboardStateCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as DashboardState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DashboardState&&(identical(other.sdkVersion, _this.sdkVersion) || other.sdkVersion == _this.sdkVersion)&&const DeepCollectionEquality().equals(other.readings, _this.readings));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DashboardState&&(identical(other.sdkVersion, _this.sdkVersion) || other.sdkVersion == _this.sdkVersion)&&const DeepCollectionEquality().equals(other.readings, _this.readings)&&(identical(other.cache, _this.cache) || other.cache == _this.cache));
 }
 
 
 @override
 int get hashCode {
   final _this = this as DashboardState;
-  return Object.hash(runtimeType,_this.sdkVersion,const DeepCollectionEquality().hash(_this.readings));
+  return Object.hash(runtimeType,_this.sdkVersion,const DeepCollectionEquality().hash(_this.readings),_this.cache);
 }
 
 @override
 String toString() {
   final _this = this as DashboardState;
-  return 'DashboardState(sdkVersion: ${_this.sdkVersion}, readings: ${_this.readings})';
+  return 'DashboardState(sdkVersion: ${_this.sdkVersion}, readings: ${_this.readings}, cache: ${_this.cache})';
 }
 
 
@@ -51,7 +53,7 @@ abstract mixin class $DashboardStateCopyWith<$Res>  {
   factory $DashboardStateCopyWith(DashboardState value, $Res Function(DashboardState) _then) = _$DashboardStateCopyWithImpl;
 @useResult
 $Res call({
- String sdkVersion, List<FlagReading> readings
+ String sdkVersion, List<FlagReading> readings, CacheInfo? cache
 });
 
 
@@ -68,11 +70,12 @@ class _$DashboardStateCopyWithImpl<$Res>
 
 /// Create a copy of DashboardState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sdkVersion = null,Object? readings = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sdkVersion = null,Object? readings = null,Object? cache = freezed,}) {
   return _then(DashboardState(
 sdkVersion: null == sdkVersion ? _self.sdkVersion : sdkVersion // ignore: cast_nullable_to_non_nullable
 as String,readings: null == readings ? _self.readings : readings // ignore: cast_nullable_to_non_nullable
-as List<FlagReading>,
+as List<FlagReading>,cache: freezed == cache ? _self.cache : cache // ignore: cast_nullable_to_non_nullable
+as CacheInfo?,
   ));
 }
 
@@ -157,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String sdkVersion,  List<FlagReading> readings)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String sdkVersion,  List<FlagReading> readings,  CacheInfo? cache)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DashboardState() when $default != null:
-return $default(_that.sdkVersion,_that.readings);case _:
+return $default(_that.sdkVersion,_that.readings,_that.cache);case _:
   return orElse();
 
 }
@@ -178,10 +181,10 @@ return $default(_that.sdkVersion,_that.readings);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String sdkVersion,  List<FlagReading> readings)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String sdkVersion,  List<FlagReading> readings,  CacheInfo? cache)  $default,) {final _that = this;
 switch (_that) {
 case _DashboardState():
-return $default(_that.sdkVersion,_that.readings);case _:
+return $default(_that.sdkVersion,_that.readings,_that.cache);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -198,10 +201,10 @@ return $default(_that.sdkVersion,_that.readings);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String sdkVersion,  List<FlagReading> readings)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String sdkVersion,  List<FlagReading> readings,  CacheInfo? cache)?  $default,) {final _that = this;
 switch (_that) {
 case _DashboardState() when $default != null:
-return $default(_that.sdkVersion,_that.readings);case _:
+return $default(_that.sdkVersion,_that.readings,_that.cache);case _:
   return null;
 
 }
@@ -213,7 +216,7 @@ return $default(_that.sdkVersion,_that.readings);case _:
 
 
 class _DashboardState implements DashboardState {
-  const _DashboardState({required this.sdkVersion, required  List<FlagReading> readings}): _readings = readings;
+  const _DashboardState({required this.sdkVersion, required  List<FlagReading> readings, this.cache}): _readings = readings;
   
 
 @override final  String sdkVersion;
@@ -224,6 +227,9 @@ class _DashboardState implements DashboardState {
   return EqualUnmodifiableListView(_readings);
 }
 
+/// The SDK's cache, once it has answered (a moment after the screen
+/// opens: it is a database query).
+@override final  CacheInfo? cache;
 
 /// Create a copy of DashboardState
 /// with the given fields replaced by the non-null parameter values.
@@ -235,18 +241,18 @@ _$DashboardStateCopyWith<_DashboardState> get copyWith => __$DashboardStateCopyW
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DashboardState&&(identical(other.sdkVersion, sdkVersion) || other.sdkVersion == sdkVersion)&&const DeepCollectionEquality().equals(other.readings, _readings));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DashboardState&&(identical(other.sdkVersion, sdkVersion) || other.sdkVersion == sdkVersion)&&const DeepCollectionEquality().equals(other.readings, _readings)&&(identical(other.cache, cache) || other.cache == cache));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,sdkVersion,const DeepCollectionEquality().hash(_readings));
+    return Object.hash(runtimeType,sdkVersion,const DeepCollectionEquality().hash(_readings),cache);
 }
 
 @override
 String toString() {
-    return 'DashboardState(sdkVersion: $sdkVersion, readings: $readings)';
+    return 'DashboardState(sdkVersion: $sdkVersion, readings: $readings, cache: $cache)';
 }
 
 
@@ -257,7 +263,7 @@ abstract mixin class _$DashboardStateCopyWith<$Res> implements $DashboardStateCo
   factory _$DashboardStateCopyWith(_DashboardState value, $Res Function(_DashboardState) _then) = __$DashboardStateCopyWithImpl;
 @override @useResult
 $Res call({
- String sdkVersion, List<FlagReading> readings
+ String sdkVersion, List<FlagReading> readings, CacheInfo? cache
 });
 
 
@@ -274,11 +280,12 @@ class __$DashboardStateCopyWithImpl<$Res>
 
 /// Create a copy of DashboardState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sdkVersion = null,Object? readings = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sdkVersion = null,Object? readings = null,Object? cache = freezed,}) {
   return _then(_DashboardState(
 sdkVersion: null == sdkVersion ? _self.sdkVersion : sdkVersion // ignore: cast_nullable_to_non_nullable
 as String,readings: null == readings ? _self._readings : readings // ignore: cast_nullable_to_non_nullable
-as List<FlagReading>,
+as List<FlagReading>,cache: freezed == cache ? _self.cache : cache // ignore: cast_nullable_to_non_nullable
+as CacheInfo?,
   ));
 }
 

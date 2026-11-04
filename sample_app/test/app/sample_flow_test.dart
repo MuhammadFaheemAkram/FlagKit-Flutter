@@ -37,6 +37,11 @@ void main() {
     tester.view.physicalSize = const Size(390 * 3, 3000 * 3);
     await tester.tapAndSettle(destination('Dashboard'));
     expect(find.text('FlagKit ${FlagKit.version}'), findsOneWidget);
+    // The real SDK's cache: nothing fills it before 0.3.0.
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pumpAndSettle();
+    expect(find.text('Empty'), findsOneWidget);
+    expect(find.text('Never'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(StatusChip),

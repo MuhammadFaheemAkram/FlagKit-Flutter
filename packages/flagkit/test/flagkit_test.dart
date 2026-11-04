@@ -1,11 +1,15 @@
 import 'dart:async';
 
 import 'package:flagkit/flagkit.dart';
+import 'package:flagkit/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const config = FlagKitConfig(apiKey: 'demo_key');
 
+  // A test has no documents directory for the cache file.
+  setUp(FlagKitTesting.useInMemoryDatabase);
+  tearDown(FlagKitTesting.useDeviceDatabase);
   tearDown(() async {
     await FlagKit.shutdown();
     FlagKit.setContext(const EvaluationContext());
@@ -31,8 +35,9 @@ void main() {
       await FlagKit.clearCache();
     });
 
-    test('asking for the instance is a developer error', () {
+    test('asking for the instance or the debug tools is a developer error', () {
       expect(() => FlagKit.instance, throwsStateError);
+      expect(() => FlagKit.debug, throwsStateError);
     });
 
     test('a context set now is the one the client starts with', () async {
@@ -51,6 +56,11 @@ void main() {
       await FlagKit.initialize(config);
 
       expect(FlagKit.instance, isA<FlagKitClient>());
+      expect(FlagKit.debug, same(FlagKit.instance.debug));
+      expect(
+        (await FlagKit.debug.watchStats().first).cacheStatus,
+        CacheStatus.empty,
+      );
       expect(
         FlagKit.detail('k').reason,
         EvaluationReason.flagNotFound,

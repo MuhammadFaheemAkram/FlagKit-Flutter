@@ -99,5 +99,24 @@ final class FakeFlagKitClient implements FlagKitClient {
   Future<void> clearCache() async {}
 
   @override
-  Future<void> shutdown() => _changes.close();
+  final FakeFlagKitDebug debug = FakeFlagKitDebug();
+
+  @override
+  Future<void> shutdown() async {
+    await _changes.close();
+    await debug.close();
+  }
+}
+
+/// [FlagKitDebug] whose stats a test sends.
+final class FakeFlagKitDebug implements FlagKitDebug {
+  final _stats = StreamController<FlagKitStats>.broadcast();
+
+  /// Sends [stats] to the listeners.
+  void emit(FlagKitStats stats) => _stats.add(stats);
+
+  @override
+  Stream<FlagKitStats> watchStats() => _stats.stream;
+
+  Future<void> close() => _stats.close();
 }

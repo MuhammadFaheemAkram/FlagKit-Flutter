@@ -7,7 +7,9 @@ library;
 
 export 'package:flagkit/src/client/flagkit_client.dart' show FlagKitClient;
 export 'package:flagkit/src/config/flagkit_config.dart' show FlagKitConfig;
+export 'package:flagkit/src/debug/flagkit_debug.dart' show FlagKitDebug;
 export 'package:flagkit/src/flagkit.dart' show FlagKit;
+export 'package:flagkit/src/model/cache_status.dart' show CacheStatus;
 export 'package:flagkit/src/model/evaluation_context.dart'
     show EvaluationContext;
 export 'package:flagkit/src/model/evaluation_reason.dart' show EvaluationReason;
@@ -16,6 +18,7 @@ export 'package:flagkit/src/model/flag_source.dart' show FlagSource;
 export 'package:flagkit/src/model/flag_type.dart' show FlagType;
 export 'package:flagkit/src/model/flag_value.dart'
     show BoolValue, DoubleValue, FlagValue, IntValue, JsonValue, StringValue;
+export 'package:flagkit/src/model/flagkit_stats.dart' show FlagKitStats;
 export 'package:flagkit/src/model/refresh_result.dart'
     show
         Failed,

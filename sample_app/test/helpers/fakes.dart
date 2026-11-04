@@ -98,5 +98,16 @@ final class FakeFlagsDebug implements FlagsDebug {
   @override
   Stream<void> watch() => _changes.stream;
 
-  Future<void> close() => _changes.close();
+  final _cache = StreamController<CacheInfo>.broadcast();
+
+  /// Sends [info] as the SDK's cache.
+  void cache(CacheInfo info) => _cache.add(info);
+
+  @override
+  Stream<CacheInfo> watchCache() => _cache.stream;
+
+  Future<void> close() async {
+    await _changes.close();
+    await _cache.close();
+  }
 }

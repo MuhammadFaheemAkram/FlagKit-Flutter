@@ -24,6 +24,23 @@ import 'package:material_ui/material_ui.dart';
       ),
     };
 
+/// The cache's freshness as a chip.
+(IconData, String, Color) cacheStyle(CacheState state, AppColors colors) =>
+    switch (state) {
+      CacheState.fresh => (Icons.check_circle_outline, 'Fresh', colors.fresh),
+      CacheState.stale => (Icons.schedule, 'Stale', colors.stale),
+      CacheState.expired => (Icons.history, 'Expired', colors.expired),
+      CacheState.empty => (Icons.inbox_outlined, 'Empty', colors.empty),
+    };
+
+/// What the cache's freshness means, in words.
+String cacheWords(CacheState state) => switch (state) {
+  CacheState.fresh => 'Fetched recently: no refresh needed.',
+  CacheState.stale => 'Due for a refresh; the flags are still used.',
+  CacheState.expired => 'Old: still used, refreshed at every chance.',
+  CacheState.empty => 'Nothing cached: every flag is the app\'s default.',
+};
+
 /// Why a reading has its value, in words.
 String reasonWords(ReadingReason reason) => switch (reason) {
   ReadingReason.override => 'overridden on this device',

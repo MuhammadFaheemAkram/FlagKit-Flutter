@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flagkit/src/model/flag_type.dart';
 import 'package:flagkit/src/util/json.dart';
 import 'package:meta/meta.dart';
@@ -149,6 +151,7 @@ final class JsonValue extends FlagValue {
   @override
   int get hashCode => Object.hash(JsonValue, jsonHash(value));
 
+  /// The value as JSON text, as the server sent it.
   @override
-  String toString() => '$value';
+  String toString() => jsonEncode(value);
 }

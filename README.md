@@ -38,8 +38,8 @@ The SDK is built in **strict, reviewable phases**. Each phase ends with:
 | Phase | Scope | Status |
 |------:|-------|:------:|
 | 1 | SDK foundation: the workspace, the public API's shape, the config and its rules, the sample app's screens on defaults, CI | ✅ Done |
-| 2 | Storage and the cache: drift, the cache policy, the anonymous id, `clearCache` | ⏳ Next |
-| 3 | The remote config pipeline: the fake server, refresh, offline-first reads, the triggers | |
+| 2 | Storage and the cache: drift, the snapshot, the cache policy, the anonymous id, `clearCache`, the first debug stats | ✅ Done |
+| 3 | The remote config pipeline: the fake server, refresh, offline-first reads, the triggers | ⏳ Next |
 | 4 | Rollouts and targeting: stable hashing, the context, rules and the evaluation order | |
 | 5 | The debug dashboard and SDK tools: overrides, "try a user", the refresh log | |
 | 6 | Documentation & CI | |
@@ -82,17 +82,29 @@ The public API is one library, [`package:flagkit/flagkit.dart`](packages/flagkit
 | `FlagDetail`, `FlagSource`, `EvaluationReason` | A read explained: the value, where it came from (`override`, `remote`, `cache`, `defaultValue`) and why |
 | `EvaluationContext` | Who is asking: a user id, a country, an app version, custom attributes |
 | `RefreshResult` | What a refresh did: `Updated`, `NotModified`, `Offline`, `Failed`, `Unauthorized`, `NotInitialized` |
+| `CacheStatus` | How fresh the cache is: `fresh`, `stale`, `expired`, `empty` |
+| `FlagKitDebug`, `FlagKitStats` | The debug tools (`FlagKit.debug`): live stats (cache status, flag count, fetched at, config version, anonymous id) |
+
+A second library, [`package:flagkit/testing.dart`](packages/flagkit/lib/testing.dart), is for an app's tests: `FlagKitTesting.useInMemoryDatabase()`.
 
 Everything else is in `lib/src/`, marked `@internal`, and out of reach.
 
-**Rules the SDK keeps (0.1.0):**
+**Rules the SDK keeps:**
 - **Reads never throw and never wait.** They return the caller's default when there is no value of the right type; nothing converts silently (`getDouble` on an integer flag is the one widening).
 - **A bad configuration fails fast.** It is the one exception: `initialize` throws an `ArgumentError` naming every broken rule, in development.
 - **Not running, defaults.** Before `initialize` and after `shutdown`, reads return the caller's default with the reason `notInitialized`, and `refresh()` says `NotInitialized`.
 - **The context outlives a client.** One set before `initialize` is the one the client starts with.
 - **Silent unless asked.** Without `debugMode`, the SDK logs nothing; with it, an unknown flag is logged once, not on every frame.
 
-There are **no flags yet**: they come from the device's cache in 0.2.0 and from the server in 0.3.0, so in 0.1.0 every read is the caller's default (`flagNotFound`).
+- **Cached, read from memory** (0.2.0):
+  - definitions are kept in the SDK's own `flagkit.sqlite` (drift), with a value and an **off value** each; they survive restarts and work offline;
+  - `initialize` loads them once into an immutable snapshot, and every read evaluates against it (source `cache`);
+  - **the order so far:** unknown → your default (`flagNotFound`); another type → your default (`typeMismatch`); switched off → the off value (`off`); otherwise the value (`fallthrough`).
+- **The cache policy:** fresh under `refreshInterval`, stale until `cacheExpiration`, expired after, empty when nothing is cached; exactly at a boundary is the later state, a future fetch time is fresh. **Expired flags are still served.**
+- **`clearCache()`** forgets the flags (not the install's anonymous id), and `changes` reports every flag whose value changed.
+- **A broken cache file never fails `initialize`:** the session runs in memory, logged.
+
+Nothing fills the cache from a server until 0.3.0, so on a device every read is still the app's default.
 
 ---
 
@@ -101,7 +113,7 @@ There are **no flags yet**: they come from the device's cache in 0.2.0 and from 
 - 🏠 **Home:** the new home (a banner and sections from a JSON flag) or the classic list, as `new_home_screen` says; `feed_page_size` stories. The whole app's **look** follows `home_theme` (classic, modern, ocean).
 - 🛒 **Checkout:** a fixed cart with the discount from `discount_percentage`, in the style `new_checkout` picks: a one-page checkout that asks before paying, or a classic stepper.
 - 👤 **Profile:** the **evaluation context**: sign in as a user id, pick a country and an app version. They go to the SDK at once.
-- 🚩 **Dashboard:** every flag the app reads, with its value, where it came from and why. The cache, refresh, overrides and the server's console arrive with the later phases.
+- 🚩 **Dashboard:** the cache (its status, how many flags, when they were fetched, the install id), and every flag the app reads, with its value, where it came from and why. Refresh, overrides and the server's console arrive with the later phases.
 - ♿ **Accessible:** dark mode and large text on every screen; never color alone. A test tour checks every screen in light and dark at 200 % text.
 
 **The app never reads a flag by its key.** Its Cubits ask the app's own `AppFlags` port (`flags.newCheckout`, `flags.feedPageSize`); one adapter holds every key and default, and a test checks that the keys appear nowhere else.
@@ -116,7 +128,8 @@ An SDK's dependencies become every host app's dependencies, so **the SDK and the
 |------|----------------------------|-----------------------|:-----:|
 | Toolchain | Flutter 3.47.6 · Dart 3.13, pinned with [FVM](https://fvm.app); one **pub workspace** | the same | 1 |
 | Public models | hand-written immutable and sealed classes; `meta` (`@internal`) | — | 1 |
-| The cache | `drift` (its own file) | — | 2 |
+| The cache | [`drift`](https://pub.dev/packages/drift) + `drift_flutter` (its own `flagkit.sqlite`, schema v1 exported) | — | 2 |
+| Ids and time | `uuid` (the anonymous id), `clock` (an injected "now") | `intl` (times) | 2 |
 | Network | `connectivity_plus`, behind `NetworkMonitor` | a demo switch | 3 |
 | UI | — | [`material_ui`](https://pub.dev/packages/material_ui) (Material 3), `cupertino_ui` | 1 |
 | Navigation | — | `go_router` + `go_router_builder` (typed routes, `StatefulShellRoute`) | 1 |
@@ -138,17 +151,21 @@ View ─▶ Cubit ─▶ AppFlags / UserContext / FlagsDebug  (the app's ports)
       FlagKitAppFlags · FlagKitUserContext · FlagKitFlagsDebug ──▶ FlagKitClient ◀── FlagKit (static facade)
              (the adapters: every key and default here)                  │
                                                                          ▼
-                                                     evaluate(key, type) ─▶ FlagDetail (value, source, reason)
-                                                     (the snapshot and the evaluation engine arrive in 0.2–0.4)
+                                                     evaluate(key, type) ─▶ FlagSnapshot (in memory) ─▶ FlagDetail (value, source, reason)
+                                                                                  ▲ loaded at start, replaced whole
+                                                                  FlagRepository ─▶ drift (flagkit.sqlite: flags, meta)
 ```
 
 ```
 FlagKit/                       # the repo root: a pub workspace (one lockfile)
 ├── packages/flagkit/          # THE SDK
 │   ├── lib/flagkit.dart       # the public API (show lists)
-│   ├── lib/src/               # everything else (@internal): the facade, client/, config/, model/, evaluation/, util/
+│   ├── lib/testing.dart       # the second public library, for apps' tests
+│   ├── lib/src/               # everything else (@internal): the facade, client/, config/, model/, evaluation/,
+│   │                          #   repository/, storage/, cache/, debug/, testing/, util/
+│   ├── drift_schemas/         # every schema version, kept to migrate from
 │   ├── example/main.dart      # the snippet pub.dev shows
-│   └── README.md  CHANGELOG.md  LICENSE  dartdoc_options.yaml
+│   └── README.md  CHANGELOG.md  LICENSE  build.yaml  dartdoc_options.yaml
 ├── sample_app/                # THE SAMPLE (a normal app)
 │   └── lib/
 │       ├── app/  core/{common,design_system,navigation}  di/
@@ -189,9 +206,14 @@ fvm dart format --output=none --set-exit-if-changed .
 (cd packages/flagkit && fvm flutter pub publish --dry-run && fvm dart doc --dry-run)
 ```
 
-**170 tests** after Phase 1:
-- **The SDK (59):** the config's rules at their edges; the values (typed, frozen JSON compared deeply); the context; the facade (before, during and after a start, one start shared, a bad config rejected); the client; the typed reads (no silent conversion); the public API's exact names; the version in code, pubspec and changelog.
-- **The sample (111):** the adapters (keys, defaults, the app's ranges for remote numbers); the Cubits and views of every screen; the theme in every look and brightness (contrast at WCAG AA); navigation; the DI graph; the SDK boundary; the accessibility tour; the app on the real SDK, running on its defaults.
+**231 tests** after Phase 2:
+- **The SDK (115):** everything from Phase 1, plus:
+  - **storage:** every `CHECK`; save, read, replace (every column, `NULL`s too), `replaceAll`, clear; the exported schema;
+  - **values from JSON:** each type, the one number conversion JSON forces, nothing else; unreadable rows skipped;
+  - **the cache policy** at every boundary; **the evaluator:** not found, wrong type (and the int → double widening), off, on;
+  - **the repository:** the anonymous id (created, kept, kept by clear), flags surviving a restart, replace and clear, a failed write leaving the snapshot;
+  - **the client** on a cached config: reads, off values, a mismatch logged once, `clearCache` and its `changes`, the stats, a broken database falling back to memory.
+- **The sample (116):** everything from Phase 1, plus the Dashboard's cache card (each state in words, the count, the fetch time, the install id) on the real SDK.
 
 CI runs on every push to `main` and every pull request: the FVM-pinned Flutter; generated code up to date and complete; format and analyze; each package's tests; `pub publish --dry-run` (a warning fails it); `dart doc --dry-run` (a broken doc reference fails it).
 
@@ -210,7 +232,9 @@ CI runs on every push to `main` and every pull request: the FVM-pinned Flutter; 
 | Delivery | a library module | a local Swift Package | a Dart package in a pub workspace |
 | Public API | `object FlagKit` | `enum FlagKit` (static) | `abstract final class FlagKit` + a `FlagKitClient` interface |
 | Values | `String` + a type | the same | a sealed `FlagValue`, parsed once |
-| Reads | sync over a cache | sync | synchronous, from an immutable snapshot (0.2.0) |
+| Cache | Room + DataStore | SwiftData + UserDefaults | drift: definitions (value + off value) and meta, in one file |
+| Reads | sync over a cache | sync | synchronous, from an immutable snapshot |
+| Cache statuses | boundaries undefined | the same | half-open boundaries; expired still served |
 | Why a value | `FlagSource` | `FlagSource` | `FlagSource` + `EvaluationReason`, in a `FlagDetail` |
 | Targeting input | `userId` per read | `userId` per read | an evaluation context, set once |
 | CI | `android-ci.yml` | `ios-ci.yml` | `flutter-ci.yml` (+ `pub publish --dry-run`, `dart doc`) |
@@ -222,6 +246,7 @@ The full table (the cache, rollouts, targeting, refresh) grows with the phases.
 ## 📚 Documentation
 
 - [Phase 1 — SDK Foundation](docs/PHASE_1_SUMMARY.md)
+- [Phase 2 — Storage + Cache Layer](docs/PHASE_2_SUMMARY.md)
 - The SDK's own [README](packages/flagkit/README.md) and [CHANGELOG](packages/flagkit/CHANGELOG.md)
 
 ---

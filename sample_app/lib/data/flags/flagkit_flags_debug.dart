@@ -33,6 +33,21 @@ class FlagKitFlagsDebug implements FlagsDebug {
   @override
   Stream<void> watch() => _flags.changes.map((_) {});
 
+  @override
+  Stream<CacheInfo> watchCache() => _flags.debug.watchStats().map(
+    (stats) => CacheInfo(
+      state: switch (stats.cacheStatus) {
+        CacheStatus.fresh => CacheState.fresh,
+        CacheStatus.stale => CacheState.stale,
+        CacheStatus.expired => CacheState.expired,
+        CacheStatus.empty => CacheState.empty,
+      },
+      flagCount: stats.flagCount,
+      installId: stats.anonymousId,
+      fetchedAt: stats.fetchedAt,
+    ),
+  );
+
   FlagReading _reading(FlagDetail detail) => FlagReading(
     key: detail.key,
     value: detail.value?.toString() ?? _defaults[detail.key] ?? '—',

@@ -1,5 +1,6 @@
 import 'package:flagkit/src/client/flagkit_client_impl.dart';
 import 'package:flagkit/src/config/flagkit_config.dart';
+import 'package:flagkit/src/debug/flagkit_debug.dart';
 import 'package:flagkit/src/model/evaluation_context.dart';
 import 'package:flagkit/src/model/flag_detail.dart';
 import 'package:flagkit/src/model/flag_value.dart';
@@ -68,6 +69,9 @@ abstract interface class FlagKitClient {
   /// Forgets the cached flags: reads return the callers' defaults until the
   /// next refresh.
   Future<void> clearCache();
+
+  /// The debug tools: what the SDK holds, for a debug screen.
+  FlagKitDebug get debug;
 
   /// Stops the client. Later reads return the callers' defaults.
   Future<void> shutdown();

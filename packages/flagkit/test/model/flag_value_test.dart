@@ -77,6 +77,16 @@ void main() {
       );
     });
 
+    test('prints as JSON', () {
+      expect(
+        JsonValue(const {
+          'banner': 'Sale',
+          'sections': ['deals'],
+        }).toString(),
+        '{"banner":"Sale","sections":["deals"]}',
+      );
+    });
+
     test('keeps null, bools, numbers, strings, lists and maps', () {
       final value = JsonValue(const {
         'a': null,

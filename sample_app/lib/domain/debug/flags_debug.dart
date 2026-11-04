@@ -11,6 +11,49 @@ abstract interface class FlagsDebug {
 
   /// Emits whenever a reading may have changed.
   Stream<void> watch();
+
+  /// The SDK's cache now, then after every change to it.
+  Stream<CacheInfo> watchCache();
+}
+
+/// How fresh the SDK's cached flags are, in the app's words.
+enum CacheState { fresh, stale, expired, empty }
+
+/// The SDK's cache, as the Dashboard shows it.
+@immutable
+final class CacheInfo {
+  const CacheInfo({
+    required this.state,
+    required this.flagCount,
+    required this.installId,
+    this.fetchedAt,
+  });
+
+  final CacheState state;
+
+  /// How many flags are cached.
+  final int flagCount;
+
+  /// This install's anonymous id: who rollouts bucket when no one is
+  /// signed in.
+  final String installId;
+
+  /// When the flags were last fetched, if ever.
+  final DateTime? fetchedAt;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CacheInfo &&
+      other.state == state &&
+      other.flagCount == flagCount &&
+      other.installId == installId &&
+      other.fetchedAt == fetchedAt;
+
+  @override
+  int get hashCode => Object.hash(state, flagCount, installId, fetchedAt);
+
+  @override
+  String toString() => 'CacheInfo($state, $flagCount flags, $fetchedAt)';
 }
 
 /// Where a reading's value came from, in the app's words.

@@ -9,5 +9,9 @@ abstract class DashboardState with _$DashboardState {
   const factory DashboardState({
     required String sdkVersion,
     required List<FlagReading> readings,
+
+    /// The SDK's cache, once it has answered (a moment after the screen
+    /// opens: it is a database query).
+    CacheInfo? cache,
   }) = _DashboardState;
 }

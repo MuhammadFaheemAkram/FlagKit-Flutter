@@ -10,18 +10,25 @@ import 'package:injectable/injectable.dart';
 @injectable
 class DashboardCubit extends Cubit<DashboardState> {
   DashboardCubit(this._debug) : super(_read(_debug)) {
-    _subscription = _debug.watch().listen((_) => emit(_read(_debug)));
+    _subscriptions = [
+      _debug.watch().listen(
+        (_) => emit(state.copyWith(readings: _debug.readAll())),
+      ),
+      _debug.watchCache().listen((cache) => emit(state.copyWith(cache: cache))),
+    ];
   }
 
   final FlagsDebug _debug;
-  late final StreamSubscription<void> _subscription;
+  late final List<StreamSubscription<Object?>> _subscriptions;
 
   static DashboardState _read(FlagsDebug debug) =>
       DashboardState(sdkVersion: debug.sdkVersion, readings: debug.readAll());
 
+  // Together, not in turn: one cancel that never completes (a drift
+  // stream's, in fake time) mustn't hold up the others (§11.94).
   @override
   Future<void> close() async {
-    await _subscription.cancel();
+    await Future.wait([for (final s in _subscriptions) s.cancel()]);
     return super.close();
   }
 }

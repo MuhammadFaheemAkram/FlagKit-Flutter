@@ -8,7 +8,7 @@ A small feature flag SDK for Flutter apps, built to show how one is designed:
 
 It talks to a fake remote config server: this is a learning project, not a hosted service.
 
-> **Status: 0.1.0: the public API's shape.** Reads already follow their final path, but FlagKit knows no flags yet: the cache arrives in 0.2.0 and the server in 0.3.0, so every read returns the caller's default.
+> **Status: 0.2.0: cached flags, read from memory.** Definitions are cached on the device and every read evaluates against them; the server arrives in 0.3.0, so until then nothing fills the cache.
 > See the [repository](https://github.com/MuhammadFaheemAkram/FlagKit-Flutter) for the plan, the sample app and the design docs.
 
 ## Usage
@@ -47,7 +47,34 @@ final detail = FlagKit.detail('new_checkout'); // value, source, reason
 - **A bad configuration is the one exception:** `initialize` throws an `ArgumentError` naming every broken rule, so you see it in development.
 - **Before `initialize` and after `shutdown`,** reads return your defaults (reason `notInitialized`) and `refresh()` returns `NotInitialized`.
 - **A context set before `initialize`** is the one the SDK starts with.
-- **Without `debugMode`, the SDK is silent.** With it, an unknown flag is logged once per session, not on every build.
+- **Without `debugMode`, the SDK is silent.** With it, an unknown flag or a wrong-typed read is logged once per session, not on every build.
+- **Cached, read from memory.** Definitions live in the SDK's own `flagkit.sqlite`, survive restarts and work offline; `initialize` loads them once, and reads never touch the disk.
+- **Every flag has a value and an off value.** Switched off on the server, a flag serves its off value (reason `off`), whatever else applies.
+- **Expired flags are still served.** The cache's status (`fresh`, `stale`, `expired`, `empty`) decides how hard FlagKit refreshes, never what a read returns.
+- **`clearCache()`** forgets the cached flags (not the install's anonymous id), and `changes` reports the flags whose value changed.
+- **A cache file that can't be opened** never fails `initialize`: the session runs in memory, logged.
+
+## Debug tools
+
+```dart
+FlagKit.debug.watchStats().listen((stats) {
+  // stats.cacheStatus, .flagCount, .fetchedAt, .configVersion, .anonymousId
+});
+```
+
+## Testing your app
+
+```dart
+import 'package:flagkit/testing.dart';
+
+setUp(() async {
+  FlagKitTesting.useInMemoryDatabase(); // widget tests have no file system
+  await FlagKit.initialize(const FlagKitConfig(apiKey: 'test'));
+});
+tearDown(FlagKit.shutdown);
+```
+
+Or depend on `FlagKitClient` (register `FlagKit.instance`) and pass a fake.
 
 ## Configuration
 

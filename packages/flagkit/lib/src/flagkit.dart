@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flagkit/src/client/flagkit_client.dart';
 import 'package:flagkit/src/client/flagkit_client_impl.dart';
 import 'package:flagkit/src/config/flagkit_config.dart';
+import 'package:flagkit/src/debug/flagkit_debug.dart';
 import 'package:flagkit/src/model/evaluation_context.dart';
 import 'package:flagkit/src/model/evaluation_reason.dart';
 import 'package:flagkit/src/model/flag_detail.dart';
@@ -175,4 +176,9 @@ abstract final class FlagKit {
       (throw StateError(
         'FlagKit.instance before FlagKit.initialize() finished.',
       ));
+
+  /// The running client's debug tools ([FlagKitClient.debug]).
+  ///
+  /// Throws a [StateError] before [initialize], like [instance].
+  static FlagKitDebug get debug => instance.debug;
 }

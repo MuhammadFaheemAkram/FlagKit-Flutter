@@ -22,6 +22,12 @@ void main() {
     reason: ReadingReason.unknownFlag,
   );
 
+  const empty = CacheInfo(
+    state: CacheState.empty,
+    flagCount: 0,
+    installId: 'anon-1',
+  );
+
   setUp(() => debug = FakeFlagsDebug()..readings = const [reading]);
   tearDown(() => debug.close());
 
@@ -32,6 +38,15 @@ void main() {
         const DashboardState(sdkVersion: '9.9.9', readings: [reading]),
       );
     });
+
+    blocTest<DashboardCubit, DashboardState>(
+      'adds the cache when the SDK answers',
+      build: () => DashboardCubit(debug),
+      act: (_) => debug.cache(empty),
+      expect: () => const [
+        DashboardState(sdkVersion: '9.9.9', readings: [reading], cache: empty),
+      ],
+    );
 
     blocTest<DashboardCubit, DashboardState>(
       'reads it again when a flag changes',
@@ -50,6 +65,12 @@ void main() {
       final (_, label, _) = sourceStyle(source, AppColors.light);
       expect(label, isNotEmpty);
     }
+    final labels = {
+      for (final state in CacheState.values)
+        cacheStyle(state, AppColors.light).$2,
+    };
+    expect(labels, hasLength(CacheState.values.length));
+    expect(CacheState.values.map(cacheWords).toSet(), hasLength(4));
     final words = ReadingReason.values.map(reasonWords).toSet();
     expect(words, hasLength(ReadingReason.values.length));
   });
@@ -88,6 +109,46 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+
+    testWidgets('before the cache answers: a line says so', (tester) async {
+      await pump(tester);
+
+      expect(find.text('Reading the cache…'), findsOneWidget);
+    });
+
+    testWidgets('an empty cache: Empty, no flags, never fetched, the id', (
+      tester,
+    ) async {
+      await pump(tester);
+      debug.cache(empty);
+      await tester.pump();
+
+      expect(find.text('Empty'), findsOneWidget);
+      expect(
+        find.text('Nothing cached: every flag is the app\'s default.'),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('Flags cached: 0'), findsOneWidget);
+      expect(find.bySemanticsLabel('Fetched: Never'), findsOneWidget);
+      expect(find.textContaining('anon-1'), findsOneWidget);
+    });
+
+    testWidgets('a stale cache: Stale, its count, and when', (tester) async {
+      await pump(tester);
+      debug.cache(
+        CacheInfo(
+          state: CacheState.stale,
+          flagCount: 6,
+          installId: 'anon-1',
+          fetchedAt: DateTime(2026, 11, 4, 9, 41, 5),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Stale'), findsOneWidget);
+      expect(find.bySemanticsLabel('Flags cached: 6'), findsOneWidget);
+      expect(find.bySemanticsLabel('Fetched: 09:41:05'), findsOneWidget);
     });
 
     testWidgets('at large text, the chip goes under the words', (tester) async {

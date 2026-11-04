@@ -1,3 +1,4 @@
+import 'package:flagkit_sample/core/common/time_text.dart';
 import 'package:flagkit_sample/core/design_system/design_system.dart';
 import 'package:flagkit_sample/di/injection.dart';
 import 'package:flagkit_sample/domain/debug/flags_debug.dart';
@@ -30,14 +31,17 @@ class DashboardView extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.only(bottom: AppSpacing.large),
         children: [
-          const SectionHeader('SDK'),
+          const SectionHeader('Cache'),
+          if (state.cache case final cache?)
+            _CacheCard(cache)
+          else
+            const ListTile(title: Text('Reading the cache…')),
           ListTile(
             leading: const Icon(Icons.flag_outlined),
             title: Text('FlagKit ${state.sdkVersion}'),
             subtitle: const Text(
-              'No flags yet: they come from the device\'s cache (0.2.0) and '
-              'the server (0.3.0). Until then every flag is the app\'s '
-              'default.',
+              'The server comes in 0.3.0: until then nothing fills the cache, '
+              'so every flag is the app\'s default.',
             ),
           ),
           const SectionHeader('Flags'),
@@ -76,6 +80,52 @@ class _ReadingTile extends StatelessWidget {
             : details,
         trailing: context.prefersStackedLayout ? null : chip,
       ),
+    );
+  }
+}
+
+/// The cache: how fresh, how many flags, since when, and this install's
+/// id.
+class _CacheCard extends StatelessWidget {
+  const _CacheCard(this.cache);
+
+  final CacheInfo cache;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, label, color) = cacheStyle(cache.state, context.appColors);
+    final fetchedAt = cache.fetchedAt;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MergeSemantics(
+          child: ListTile(
+            leading: Icon(icon, color: color),
+            title: Text(label),
+            subtitle: Text(cacheWords(cache.state)),
+          ),
+        ),
+        StatRow(
+          icon: Icons.layers_outlined,
+          label: 'Flags cached',
+          value: '${cache.flagCount}',
+        ),
+        StatRow(
+          icon: Icons.download_outlined,
+          label: 'Fetched',
+          value: fetchedAt == null ? 'Never' : clockTime(fetchedAt),
+        ),
+        MergeSemantics(
+          child: ListTile(
+            leading: const Icon(Icons.fingerprint),
+            title: const Text('Install id'),
+            subtitle: Text(
+              '${cache.installId}\nWho rollouts bucket when no one is signed '
+              'in. Clearing the cache keeps it.',
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

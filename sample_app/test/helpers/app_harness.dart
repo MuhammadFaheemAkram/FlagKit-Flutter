@@ -1,4 +1,5 @@
 import 'package:flagkit/flagkit.dart';
+import 'package:flagkit/testing.dart';
 import 'package:flagkit_sample/app/bootstrap.dart';
 import 'package:flagkit_sample/app/flagkit_sample_app.dart';
 import 'package:flagkit_sample/di/injection.dart';
@@ -17,8 +18,12 @@ Future<void> pumpSample(WidgetTester tester, {String? initialLocation}) async {
   await tester.pumpAndSettle();
 }
 
-/// What `main()` does before `runApp`: its own `bootstrap()`.
-Future<void> startSample() => bootstrap();
+/// What `main()` does before `runApp`: its own `bootstrap()`, with the
+/// SDK's cache in memory (a widget test has no documents directory).
+Future<void> startSample() {
+  FlagKitTesting.useInMemoryDatabase();
+  return bootstrap();
+}
 
 /// Undoes [pumpSample]: a fresh graph, a stopped SDK and no context for
 /// the next test.
@@ -26,6 +31,7 @@ Future<void> tearDownSample() async {
   await getIt.reset();
   await FlagKit.shutdown();
   FlagKit.setContext(const EvaluationContext());
+  FlagKitTesting.useDeviceDatabase();
 }
 
 /// The bottom bar's destination labelled [label] (a tab).
