@@ -72,3 +72,40 @@ class MetaEntries extends Table {
   @override
   Set<Column<Object>> get primaryKey => {name};
 }
+
+/// The refresh log: one row per refresh, the newest 50 kept (schema v2).
+@internal
+@DataClassName('RefreshRow')
+class Refreshes extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  TextColumn get trigger => text()();
+
+  DateTimeColumn get startedAt => dateTime()();
+
+  DateTimeColumn get finishedAt => dateTime()();
+
+  TextColumn get outcome => text()();
+
+  IntColumn get added => integer().withDefault(const Constant(0))();
+
+  IntColumn get changed => integer().withDefault(const Constant(0))();
+
+  IntColumn get removed => integer().withDefault(const Constant(0))();
+
+  IntColumn get skipped => integer().withDefault(const Constant(0))();
+
+  IntColumn get configVersion => integer().nullable()();
+
+  TextColumn get error => text().nullable()();
+
+  @override
+  List<String> get customConstraints => [
+    "CHECK (trigger IN ('startup', 'interval', 'resumed', 'reconnect', "
+        "'manual'))",
+    "CHECK (outcome IN ('updated', 'notModified', 'offline', 'failed', "
+        "'unauthorized'))",
+    'CHECK (added >= 0 AND changed >= 0 AND removed >= 0 AND skipped >= 0)',
+    "CHECK (started_at GLOB '*Z' AND finished_at GLOB '*Z')",
+  ];
+}

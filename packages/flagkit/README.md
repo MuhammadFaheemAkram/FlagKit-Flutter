@@ -8,7 +8,7 @@ A small feature flag SDK for Flutter apps, built to show how one is designed:
 
 It talks to a fake remote config server: this is a learning project, not a hosted service.
 
-> **Status: 0.2.0: cached flags, read from memory.** Definitions are cached on the device and every read evaluates against them; the server arrives in 0.3.0, so until then nothing fills the cache.
+> **Status: 0.3.0: cached, and refreshed from a server.** Definitions come from a `RemoteConfigTransport` (a fake server by default), are cached on the device, and every read evaluates against them in memory. Rules and rollouts arrive in 0.4.0.
 > See the [repository](https://github.com/MuhammadFaheemAkram/FlagKit-Flutter) for the plan, the sample app and the design docs.
 
 ## Usage
@@ -54,12 +54,47 @@ final detail = FlagKit.detail('new_checkout'); // value, source, reason
 - **`clearCache()`** forgets the cached flags (not the install's anonymous id), and `changes` reports the flags whose value changed.
 - **A cache file that can't be opened** never fails `initialize`: the session runs in memory, logged.
 
+## Refreshing
+
+`refresh()` fetches the definitions now and returns a `RefreshResult` (`Updated`, `NotModified`, `Offline`, `Failed`, `Unauthorized`); you rarely need it:
+- **at `initialize`,** a cache that isn't fresh is refreshed. With nothing cached, `startupWait` lets `initialize` wait for that first fetch, so the first screen shows real values;
+- **in the foreground,** the moment the cache turns stale (`refreshInterval`);
+- **when the app comes back** to the foreground, and **on reconnect**, if the cache isn't fresh.
+
+None runs offline or after the server rejected the key (401). Each fetch sends the cached config version, so an unchanged config comes back "not modified" with no body. A malformed payload changes nothing; an invalid flag is skipped and the rest apply. Refreshes run one at a time, and the new definitions replace the cache in one transaction.
+
+The default transport is an empty `FakeRemoteConfigServer`. Give it your flags, or write your own transport:
+
+```dart
+await FlagKit.initialize(
+  FlagKitConfig(
+    apiKey: 'demo_key',
+    transport: FakeRemoteConfigServer(flags: [
+      {'key': 'new_home_screen', 'type': 'boolean', 'value': true, 'offValue': false},
+    ]),
+  ),
+);
+
+class HttpTransport implements RemoteConfigTransport {
+  @override
+  Future<FetchResponse> fetch(FetchRequest request) async {
+    // GET the config with request.apiKey in a header and request.ifVersion
+    // as If-None-Match; 304 → ConfigNotModified, 200 → FetchedConfig(json);
+    // throw ServerUnreachable / ServerFailure / ApiKeyRejected.
+  }
+}
+```
+
+The wire format: `{"version": 7, "flags": [{"key": "home_theme", "type": "string", "value": "modern", "offValue": "classic", "enabled": true}]}`. Types: `boolean`, `string`, `int`, `double`, `json`.
+
 ## Debug tools
 
 ```dart
 FlagKit.debug.watchStats().listen((stats) {
-  // stats.cacheStatus, .flagCount, .fetchedAt, .configVersion, .anonymousId
+  // stats.cacheStatus, .flagCount, .fetchedAt, .configVersion, .anonymousId,
+  // stats.lastRefresh (a RefreshRecord)
 });
+FlagKit.debug.watchRefreshes(); // the refresh log, newest first
 ```
 
 ## Testing your app
@@ -69,7 +104,14 @@ import 'package:flagkit/testing.dart';
 
 setUp(() async {
   FlagKitTesting.useInMemoryDatabase(); // widget tests have no file system
-  await FlagKit.initialize(const FlagKitConfig(apiKey: 'test'));
+  FlagKitTesting.disableTimers();       // no timer pending when a test ends
+  await FlagKit.initialize(
+    FlagKitConfig(
+      apiKey: 'test',
+      transport: FakeRemoteConfigServer(latency: Duration.zero),
+      networkMonitor: FakeNetworkMonitor(), // set `.online = false` to go offline
+    ),
+  );
 });
 tearDown(FlagKit.shutdown);
 ```
@@ -84,6 +126,8 @@ Or depend on `FlagKitClient` (register `FlagKit.instance`) and pass a fake.
 | `refreshInterval` | 1 h | ≥ 1 min: how long fetched flags stay fresh |
 | `cacheExpiration` | 24 h | ≥ `refreshInterval`: when they count as expired (still served) |
 | `startupWait` | 0 | 0–10 s: with nothing cached, how long `initialize` waits for a first fetch |
+| `transport` | an empty `FakeRemoteConfigServer` | any `RemoteConfigTransport` |
+| `networkMonitor` | `ConnectivityNetworkMonitor()` | any `NetworkMonitor` |
 | `debugMode` | false | |
 
 ## License

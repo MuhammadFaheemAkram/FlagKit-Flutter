@@ -15,10 +15,12 @@ import 'package:flagkit_sample/app/theme_cubit.dart' as _i973;
 import 'package:flagkit_sample/data/context/flagkit_user_context.dart' as _i686;
 import 'package:flagkit_sample/data/flags/flagkit_app_flags.dart' as _i1022;
 import 'package:flagkit_sample/data/flags/flagkit_flags_debug.dart' as _i469;
+import 'package:flagkit_sample/data/network/demo_network_monitor.dart' as _i136;
 import 'package:flagkit_sample/di/app_module.dart' as _i963;
 import 'package:flagkit_sample/domain/context/user_context.dart' as _i193;
 import 'package:flagkit_sample/domain/debug/flags_debug.dart' as _i760;
 import 'package:flagkit_sample/domain/flags/app_flags.dart' as _i732;
+import 'package:flagkit_sample/domain/network/device_network.dart' as _i712;
 import 'package:flagkit_sample/features/checkout/cubit/checkout_cubit.dart'
     as _i533;
 import 'package:flagkit_sample/features/dashboard/cubit/dashboard_cubit.dart'
@@ -31,13 +33,21 @@ import 'package:injectable/injectable.dart' as _i526;
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
-  _i174.GetIt init({
+  Future<_i174.GetIt> init({
     String? environment,
     _i526.EnvironmentFilter? environmentFilter,
-  }) {
+  }) async {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final appModule = _$AppModule();
+    await gh.singletonAsync<_i110.FakeRemoteConfigServer>(
+      () => appModule.server(),
+      preResolve: true,
+    );
     gh.lazySingleton<_i110.FlagKitClient>(() => appModule.flagKit);
+    gh.lazySingleton<_i110.NetworkMonitor>(
+      () => appModule.deviceMonitor(),
+      instanceName: 'device',
+    );
     gh.lazySingleton<_i193.UserContext>(
       () => _i686.FlagKitUserContext(gh<_i110.FlagKitClient>()),
     );
@@ -47,9 +57,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i732.AppFlags>(
       () => _i1022.FlagKitAppFlags(gh<_i110.FlagKitClient>()),
     );
-    gh.factory<_i770.DashboardCubit>(
-      () => _i770.DashboardCubit(gh<_i760.FlagsDebug>()),
-    );
     gh.factory<_i581.ProfileCubit>(
       () => _i581.ProfileCubit(gh<_i193.UserContext>()),
     );
@@ -58,6 +65,20 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i533.CheckoutCubit(gh<_i732.AppFlags>()),
     );
     gh.factory<_i826.HomeCubit>(() => _i826.HomeCubit(gh<_i732.AppFlags>()));
+    gh.lazySingleton<_i136.DemoNetworkMonitor>(
+      () => appModule.demoNetwork(
+        gh<_i110.NetworkMonitor>(instanceName: 'device'),
+      ),
+    );
+    gh.lazySingleton<_i712.DeviceNetwork>(
+      () => appModule.deviceNetwork(gh<_i136.DemoNetworkMonitor>()),
+    );
+    gh.factory<_i770.DashboardCubit>(
+      () => _i770.DashboardCubit(
+        gh<_i760.FlagsDebug>(),
+        gh<_i712.DeviceNetwork>(),
+      ),
+    );
     return this;
   }
 }

@@ -17,7 +17,11 @@ mixin _$DashboardState {
 
  String get sdkVersion; List<FlagReading> get readings;/// The SDK's cache, once it has answered (a moment after the screen
 /// opens: it is a database query).
- CacheInfo? get cache;
+ CacheInfo? get cache;/// The device's network and the demo switch, once known.
+ NetworkStatus? get network;/// Whether a refresh asked from here is running.
+ bool get refreshing;/// The latest refresh asked from here, and how many there were: a new
+/// one shows its result once.
+ RefreshSummary? get lastResult; int get refreshCount;
 /// Create a copy of DashboardState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,20 +33,20 @@ $DashboardStateCopyWith<DashboardState> get copyWith => _$DashboardStateCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as DashboardState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DashboardState&&(identical(other.sdkVersion, _this.sdkVersion) || other.sdkVersion == _this.sdkVersion)&&const DeepCollectionEquality().equals(other.readings, _this.readings)&&(identical(other.cache, _this.cache) || other.cache == _this.cache));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DashboardState&&(identical(other.sdkVersion, _this.sdkVersion) || other.sdkVersion == _this.sdkVersion)&&const DeepCollectionEquality().equals(other.readings, _this.readings)&&(identical(other.cache, _this.cache) || other.cache == _this.cache)&&(identical(other.network, _this.network) || other.network == _this.network)&&(identical(other.refreshing, _this.refreshing) || other.refreshing == _this.refreshing)&&(identical(other.lastResult, _this.lastResult) || other.lastResult == _this.lastResult)&&(identical(other.refreshCount, _this.refreshCount) || other.refreshCount == _this.refreshCount));
 }
 
 
 @override
 int get hashCode {
   final _this = this as DashboardState;
-  return Object.hash(runtimeType,_this.sdkVersion,const DeepCollectionEquality().hash(_this.readings),_this.cache);
+  return Object.hash(runtimeType,_this.sdkVersion,const DeepCollectionEquality().hash(_this.readings),_this.cache,_this.network,_this.refreshing,_this.lastResult,_this.refreshCount);
 }
 
 @override
 String toString() {
   final _this = this as DashboardState;
-  return 'DashboardState(sdkVersion: ${_this.sdkVersion}, readings: ${_this.readings}, cache: ${_this.cache})';
+  return 'DashboardState(sdkVersion: ${_this.sdkVersion}, readings: ${_this.readings}, cache: ${_this.cache}, network: ${_this.network}, refreshing: ${_this.refreshing}, lastResult: ${_this.lastResult}, refreshCount: ${_this.refreshCount})';
 }
 
 
@@ -53,11 +57,11 @@ abstract mixin class $DashboardStateCopyWith<$Res>  {
   factory $DashboardStateCopyWith(DashboardState value, $Res Function(DashboardState) _then) = _$DashboardStateCopyWithImpl;
 @useResult
 $Res call({
- String sdkVersion, List<FlagReading> readings, CacheInfo? cache
+ String sdkVersion, List<FlagReading> readings, CacheInfo? cache, NetworkStatus? network, bool refreshing, RefreshSummary? lastResult, int refreshCount
 });
 
 
-
+$NetworkStatusCopyWith<$Res>? get network;
 
 }
 /// @nodoc
@@ -70,15 +74,31 @@ class _$DashboardStateCopyWithImpl<$Res>
 
 /// Create a copy of DashboardState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sdkVersion = null,Object? readings = null,Object? cache = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sdkVersion = null,Object? readings = null,Object? cache = freezed,Object? network = freezed,Object? refreshing = null,Object? lastResult = freezed,Object? refreshCount = null,}) {
   return _then(DashboardState(
 sdkVersion: null == sdkVersion ? _self.sdkVersion : sdkVersion // ignore: cast_nullable_to_non_nullable
 as String,readings: null == readings ? _self.readings : readings // ignore: cast_nullable_to_non_nullable
 as List<FlagReading>,cache: freezed == cache ? _self.cache : cache // ignore: cast_nullable_to_non_nullable
-as CacheInfo?,
+as CacheInfo?,network: freezed == network ? _self.network : network // ignore: cast_nullable_to_non_nullable
+as NetworkStatus?,refreshing: null == refreshing ? _self.refreshing : refreshing // ignore: cast_nullable_to_non_nullable
+as bool,lastResult: freezed == lastResult ? _self.lastResult : lastResult // ignore: cast_nullable_to_non_nullable
+as RefreshSummary?,refreshCount: null == refreshCount ? _self.refreshCount : refreshCount // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
+/// Create a copy of DashboardState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NetworkStatusCopyWith<$Res>? get network {
+    if (_self.network == null) {
+    return null;
+  }
 
+  return $NetworkStatusCopyWith<$Res>(_self.network!, (value) {
+    return _then(_self.copyWith(network: value));
+  });
+}
 }
 
 
@@ -160,10 +180,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String sdkVersion,  List<FlagReading> readings,  CacheInfo? cache)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String sdkVersion,  List<FlagReading> readings,  CacheInfo? cache,  NetworkStatus? network,  bool refreshing,  RefreshSummary? lastResult,  int refreshCount)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DashboardState() when $default != null:
-return $default(_that.sdkVersion,_that.readings,_that.cache);case _:
+return $default(_that.sdkVersion,_that.readings,_that.cache,_that.network,_that.refreshing,_that.lastResult,_that.refreshCount);case _:
   return orElse();
 
 }
@@ -181,10 +201,10 @@ return $default(_that.sdkVersion,_that.readings,_that.cache);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String sdkVersion,  List<FlagReading> readings,  CacheInfo? cache)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String sdkVersion,  List<FlagReading> readings,  CacheInfo? cache,  NetworkStatus? network,  bool refreshing,  RefreshSummary? lastResult,  int refreshCount)  $default,) {final _that = this;
 switch (_that) {
 case _DashboardState():
-return $default(_that.sdkVersion,_that.readings,_that.cache);case _:
+return $default(_that.sdkVersion,_that.readings,_that.cache,_that.network,_that.refreshing,_that.lastResult,_that.refreshCount);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +221,10 @@ return $default(_that.sdkVersion,_that.readings,_that.cache);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String sdkVersion,  List<FlagReading> readings,  CacheInfo? cache)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String sdkVersion,  List<FlagReading> readings,  CacheInfo? cache,  NetworkStatus? network,  bool refreshing,  RefreshSummary? lastResult,  int refreshCount)?  $default,) {final _that = this;
 switch (_that) {
 case _DashboardState() when $default != null:
-return $default(_that.sdkVersion,_that.readings,_that.cache);case _:
+return $default(_that.sdkVersion,_that.readings,_that.cache,_that.network,_that.refreshing,_that.lastResult,_that.refreshCount);case _:
   return null;
 
 }
@@ -216,7 +236,7 @@ return $default(_that.sdkVersion,_that.readings,_that.cache);case _:
 
 
 class _DashboardState implements DashboardState {
-  const _DashboardState({required this.sdkVersion, required  List<FlagReading> readings, this.cache}): _readings = readings;
+  const _DashboardState({required this.sdkVersion, required  List<FlagReading> readings, this.cache, this.network, this.refreshing = false, this.lastResult, this.refreshCount = 0}): _readings = readings;
   
 
 @override final  String sdkVersion;
@@ -230,6 +250,14 @@ class _DashboardState implements DashboardState {
 /// The SDK's cache, once it has answered (a moment after the screen
 /// opens: it is a database query).
 @override final  CacheInfo? cache;
+/// The device's network and the demo switch, once known.
+@override final  NetworkStatus? network;
+/// Whether a refresh asked from here is running.
+@override@JsonKey() final  bool refreshing;
+/// The latest refresh asked from here, and how many there were: a new
+/// one shows its result once.
+@override final  RefreshSummary? lastResult;
+@override@JsonKey() final  int refreshCount;
 
 /// Create a copy of DashboardState
 /// with the given fields replaced by the non-null parameter values.
@@ -241,18 +269,18 @@ _$DashboardStateCopyWith<_DashboardState> get copyWith => __$DashboardStateCopyW
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DashboardState&&(identical(other.sdkVersion, sdkVersion) || other.sdkVersion == sdkVersion)&&const DeepCollectionEquality().equals(other.readings, _readings)&&(identical(other.cache, cache) || other.cache == cache));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DashboardState&&(identical(other.sdkVersion, sdkVersion) || other.sdkVersion == sdkVersion)&&const DeepCollectionEquality().equals(other.readings, _readings)&&(identical(other.cache, cache) || other.cache == cache)&&(identical(other.network, network) || other.network == network)&&(identical(other.refreshing, refreshing) || other.refreshing == refreshing)&&(identical(other.lastResult, lastResult) || other.lastResult == lastResult)&&(identical(other.refreshCount, refreshCount) || other.refreshCount == refreshCount));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,sdkVersion,const DeepCollectionEquality().hash(_readings),cache);
+    return Object.hash(runtimeType,sdkVersion,const DeepCollectionEquality().hash(_readings),cache,network,refreshing,lastResult,refreshCount);
 }
 
 @override
 String toString() {
-    return 'DashboardState(sdkVersion: $sdkVersion, readings: $readings, cache: $cache)';
+    return 'DashboardState(sdkVersion: $sdkVersion, readings: $readings, cache: $cache, network: $network, refreshing: $refreshing, lastResult: $lastResult, refreshCount: $refreshCount)';
 }
 
 
@@ -263,11 +291,11 @@ abstract mixin class _$DashboardStateCopyWith<$Res> implements $DashboardStateCo
   factory _$DashboardStateCopyWith(_DashboardState value, $Res Function(_DashboardState) _then) = __$DashboardStateCopyWithImpl;
 @override @useResult
 $Res call({
- String sdkVersion, List<FlagReading> readings, CacheInfo? cache
+ String sdkVersion, List<FlagReading> readings, CacheInfo? cache, NetworkStatus? network, bool refreshing, RefreshSummary? lastResult, int refreshCount
 });
 
 
-
+@override $NetworkStatusCopyWith<$Res>? get network;
 
 }
 /// @nodoc
@@ -280,16 +308,32 @@ class __$DashboardStateCopyWithImpl<$Res>
 
 /// Create a copy of DashboardState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sdkVersion = null,Object? readings = null,Object? cache = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sdkVersion = null,Object? readings = null,Object? cache = freezed,Object? network = freezed,Object? refreshing = null,Object? lastResult = freezed,Object? refreshCount = null,}) {
   return _then(_DashboardState(
 sdkVersion: null == sdkVersion ? _self.sdkVersion : sdkVersion // ignore: cast_nullable_to_non_nullable
 as String,readings: null == readings ? _self._readings : readings // ignore: cast_nullable_to_non_nullable
 as List<FlagReading>,cache: freezed == cache ? _self.cache : cache // ignore: cast_nullable_to_non_nullable
-as CacheInfo?,
+as CacheInfo?,network: freezed == network ? _self.network : network // ignore: cast_nullable_to_non_nullable
+as NetworkStatus?,refreshing: null == refreshing ? _self.refreshing : refreshing // ignore: cast_nullable_to_non_nullable
+as bool,lastResult: freezed == lastResult ? _self.lastResult : lastResult // ignore: cast_nullable_to_non_nullable
+as RefreshSummary?,refreshCount: null == refreshCount ? _self.refreshCount : refreshCount // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
+/// Create a copy of DashboardState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NetworkStatusCopyWith<$Res>? get network {
+    if (_self.network == null) {
+    return null;
+  }
 
+  return $NetworkStatusCopyWith<$Res>(_self.network!, (value) {
+    return _then(_self.copyWith(network: value));
+  });
+}
 }
 
 // dart format on

@@ -1,3 +1,17 @@
+## 0.3.0
+
+- **Flags come from a server.** `refresh()` fetches the definitions through a `RemoteConfigTransport` (`FlagKitConfig.transport`), and returns a `RefreshResult`: `Updated` (what was added, changed, removed and skipped), `NotModified`, `Offline`, `Failed` or `Unauthorized`.
+- **Conditional fetches:** the SDK sends the config version it has (`FetchRequest.ifVersion`); an unchanged config comes back as `ConfigNotModified`, with no body, and the cache is fresh again.
+- **Validation in two levels:** a malformed payload changes nothing; an invalid flag (an unknown type, a value of another type, a bad key, a second definition) is skipped and logged, and the rest apply. A flag with rules or a rollout is skipped until 0.4.0 can evaluate them.
+- **One refresh at a time,** and the new definitions replace the cache in one transaction; reads see the old flags or the new ones, never a mix. `changes` reports the flags whose value changed.
+- **Automatic refreshes,** none of them while the cache is fresh, offline, or after a rejected key: at `initialize`, every `refreshInterval` in the foreground, when the app comes back to the foreground, and on reconnect.
+- **`startupWait`:** with nothing cached, `initialize` waits up to this long for the first fetch.
+- **`NetworkMonitor`** (`ConnectivityNetworkMonitor` by default, or `FlagKitConfig.networkMonitor`): offline, nothing is attempted and the cached flags keep serving reads.
+- **A rejected API key (401)** pauses automatic refreshes until the next `initialize`.
+- **`FakeRemoteConfigServer`**, the default transport: definitions in the wire format, latency, a failure rate, reachability, a key check, conditional fetches, a console (`setFlag`, `setValue`, `setEnabled`, `removeFlag`) and `watchStats()`.
+- **The refresh log** (schema v2, with a tested migration): `FlagKit.debug.watchRefreshes()` and `FlagKitStats.lastRefresh`, as `RefreshRecord`s.
+- **`package:flagkit/testing.dart`:** `FakeNetworkMonitor`, `FlagKitTesting.disableTimers()`.
+
 ## 0.2.0
 
 - **Flags are cached** in the SDK's own database (`flagkit.sqlite`, drift, schema v1 exported): every definition the server sends, with its value and its off value. They survive a restart and work offline.

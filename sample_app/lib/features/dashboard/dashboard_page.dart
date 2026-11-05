@@ -2,14 +2,16 @@ import 'package:flagkit_sample/core/common/time_text.dart';
 import 'package:flagkit_sample/core/design_system/design_system.dart';
 import 'package:flagkit_sample/di/injection.dart';
 import 'package:flagkit_sample/domain/debug/flags_debug.dart';
+import 'package:flagkit_sample/domain/network/device_network.dart';
 import 'package:flagkit_sample/features/dashboard/cubit/dashboard_cubit.dart';
+import 'package:flagkit_sample/features/dashboard/cubit/dashboard_state.dart';
 import 'package:flagkit_sample/features/dashboard/dashboard_words.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// The Dashboard: what the SDK knows. For now, the app's flags with where
-/// each value comes from and why; the cache, the server and the debug
-/// tools arrive with the next versions.
+/// The Dashboard: what the SDK knows. The cache and a refresh, the
+/// device's network with the demo's offline switch, and the app's flags
+/// with where each value comes from and why.
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
@@ -26,28 +28,94 @@ class DashboardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardCubit>().state;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: AppSpacing.large),
-        children: [
-          const SectionHeader('Cache'),
-          if (state.cache case final cache?)
-            _CacheCard(cache)
-          else
-            const ListTile(title: Text('Reading the cache…')),
-          ListTile(
-            leading: const Icon(Icons.flag_outlined),
-            title: Text('FlagKit ${state.sdkVersion}'),
-            subtitle: const Text(
-              'The server comes in 0.3.0: until then nothing fills the cache, '
-              'so every flag is the app\'s default.',
+    final cubit = context.read<DashboardCubit>();
+    return BlocListener<DashboardCubit, DashboardState>(
+      listenWhen: (before, now) => now.refreshCount > before.refreshCount,
+      listener: (context, state) => ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(refreshResultWords(state.lastResult!))),
+        ),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Dashboard')),
+        body: ListView(
+          padding: const EdgeInsets.only(bottom: AppSpacing.large),
+          children: [
+            const SectionHeader('Cache'),
+            if (state.cache case final cache?)
+              _CacheCard(cache)
+            else
+              const ListTile(title: Text('Reading the cache…')),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.medium,
+                vertical: AppSpacing.xSmall,
+              ),
+              child: FilledButton.icon(
+                onPressed: state.refreshing ? null : cubit.refresh,
+                icon: const Icon(Icons.refresh),
+                label: Text(state.refreshing ? 'Refreshing…' : 'Refresh'),
+              ),
             ),
-          ),
-          const SectionHeader('Flags'),
-          for (final reading in state.readings) _ReadingTile(reading),
-        ],
+            if (state.refreshing)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.medium),
+                child: LinearProgressIndicator(
+                  semanticsLabel: 'Refreshing the flags',
+                ),
+              ),
+            const SectionHeader('Network'),
+            if (state.network case final network?)
+              _NetworkCard(network, onSimulateOffline: cubit.simulateOffline),
+            const SectionHeader('Flags'),
+            for (final reading in state.readings) _ReadingTile(reading),
+            ListTile(
+              leading: const Icon(Icons.flag_outlined),
+              title: Text('FlagKit ${state.sdkVersion}'),
+              subtitle: const Text(
+                'Rules and rollouts come in 0.4.0; until then a flag is on '
+                'or off for everyone.',
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// The device's network, and the demo's switch.
+class _NetworkCard extends StatelessWidget {
+  const _NetworkCard(this.network, {required this.onSimulateOffline});
+
+  final NetworkStatus network;
+  final ValueChanged<bool> onSimulateOffline;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, label) = switch (network) {
+      NetworkStatus(online: true) => (Icons.wifi, 'Online'),
+      NetworkStatus(simulatingOffline: true) => (
+        Icons.wifi_off,
+        'Offline (simulated)',
+      ),
+      _ => (Icons.wifi_off, 'Offline'),
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(leading: Icon(icon), title: Text(label)),
+        SwitchListTile.adaptive(
+          title: const Text('Device offline'),
+          subtitle: const Text(
+            'For the demo: the SDK sees no network, keeps serving the cached '
+            'flags, and refreshes nothing. Switch it off to see the '
+            'reconnect refresh.',
+          ),
+          value: network.simulatingOffline,
+          onChanged: onSimulateOffline,
+        ),
+      ],
     );
   }
 }
@@ -115,6 +183,21 @@ class _CacheCard extends StatelessWidget {
           label: 'Fetched',
           value: fetchedAt == null ? 'Never' : clockTime(fetchedAt),
         ),
+        if (cache.lastRefresh case final last?)
+          MergeSemantics(
+            child: ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Last refresh'),
+              subtitle: Text(
+                [
+                  causeWords(last.cause),
+                  kindWords(last.kind),
+                  clockTime(last.at),
+                  ?last.error,
+                ].join(' · '),
+              ),
+            ),
+          ),
         MergeSemantics(
           child: ListTile(
             leading: const Icon(Icons.fingerprint),

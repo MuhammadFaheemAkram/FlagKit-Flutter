@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 // The app talks to the SDK through its own ports (AppFlags, UserContext,
-// FlagsDebug). Only the files that wire the SDK in may import it: the
+// FlagsDebug, DeviceNetwork). Only the files that wire the SDK in may import it: the
 // adapters, the DI module, the SDK's config and main(). A Cubit or a
 // screen that imported it would tie the app's logic to one vendor, and
 // scatter flag keys through the widgets.
@@ -29,6 +29,7 @@ void main() {
         'lib/data/flags/flagkit_app_flags.dart',
         'lib/data/flags/flagkit_flags_debug.dart',
         'lib/data/context/flagkit_user_context.dart',
+        'lib/data/network/demo_network_monitor.dart',
         'lib/di/app_module.dart',
       ]),
     );

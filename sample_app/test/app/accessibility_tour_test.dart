@@ -1,3 +1,4 @@
+import 'package:flagkit/flagkit.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -13,7 +14,16 @@ void main() {
   for (final brightness in Brightness.values) {
     group('${brightness.name} theme, text at 200 %', () {
       for (final (name, location, Future<void> Function(WidgetTester)? act) in [
-        ('Home, classic', '/home', null),
+        ('Home, the new home (the server\'s flags)', '/home', null),
+        (
+          'Home, the classic home',
+          '/home',
+          (tester) async {
+            testServer.setEnabled('new_home_screen', false);
+            await tester.runAsync(FlagKit.refresh);
+            await tester.pumpAndSettle();
+          },
+        ),
         ('Checkout, the cart step', '/checkout', null),
         (
           'Checkout, the payment step',
@@ -47,6 +57,25 @@ void main() {
           },
         ),
         ('Dashboard', '/dashboard', null),
+        (
+          'Dashboard, after a refresh',
+          '/dashboard',
+          (tester) async {
+            await tester.tap(find.text('Refresh'));
+            for (var i = 0; i < 3; i++) {
+              await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+              await tester.pumpAndSettle();
+            }
+          },
+        ),
+        (
+          'Dashboard, offline (simulated)',
+          '/dashboard',
+          (tester) async {
+            await tester.tap(find.text('Device offline'));
+            await tester.pumpAndSettle();
+          },
+        ),
         ('Page not found', '/nowhere', null),
       ]) {
         testWidgets(name, (tester) async {

@@ -3,9 +3,12 @@ import 'package:flagkit/flagkit.dart';
 import 'package:flagkit/src/client/flagkit_client_impl.dart';
 import 'package:flagkit/src/repository/flag_definition.dart';
 import 'package:flagkit/src/repository/flag_repository.dart';
+import 'package:flagkit/src/scheduling/app_lifecycle.dart';
 import 'package:flagkit/src/storage/flagkit_database.dart';
 import 'package:flagkit/src/util/flagkit_logger.dart';
+import 'package:flagkit/testing.dart';
 
+import 'fakes.dart';
 import 'log_recorder.dart';
 
 /// The tests' "now": a Wednesday morning, UTC.
@@ -18,8 +21,20 @@ final class SequentialIds {
   String call() => 'id-${_next++}';
 }
 
-/// A config for tests: the defaults, with a key.
-const testConfig = FlagKitConfig(apiKey: 'demo_key');
+/// A config for tests: the defaults with a key, an instant server (or
+/// [transport]) and a network monitor the test controls (or [monitor]).
+FlagKitConfig testConfig({
+  RemoteConfigTransport? transport,
+  NetworkMonitor? monitor,
+  Duration startupWait = Duration.zero,
+  Duration refreshInterval = const Duration(hours: 1),
+}) => FlagKitConfig(
+  apiKey: 'demo_key',
+  transport: transport ?? FakeRemoteConfigServer(latency: Duration.zero),
+  networkMonitor: monitor ?? FakeNetworkMonitor(),
+  startupWait: startupWait,
+  refreshInterval: refreshInterval,
+);
 
 /// A definition with sensible defaults: a boolean flag, on.
 FlagDefinition definition(
@@ -64,16 +79,19 @@ Future<void> seedCache(
   );
 }
 
-/// A client on [database] (a fresh one in memory by default), at [now].
+/// A client on [database] (a fresh one in memory by default), at [now],
+/// in the foreground (or [lifecycle]).
 Future<FlagKitClientImpl> openTestClient({
   FlagKitDatabase? database,
-  FlagKitConfig config = testConfig,
+  FlagKitConfig? config,
   LogRecorder? logs,
   DateTime Function()? now,
+  AppLifecycle? lifecycle,
 }) => FlagKitClientImpl.open(
-  config,
+  config ?? testConfig(),
   database: database ?? FlagKitDatabase.inMemory(),
   logger: (logs ?? LogRecorder()).logger(),
   clock: Clock(now ?? () => testNow),
   newId: SequentialIds().call,
+  lifecycle: lifecycle ?? FakeAppLifecycle(),
 );

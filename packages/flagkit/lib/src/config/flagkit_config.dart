@@ -1,3 +1,5 @@
+import 'package:flagkit/src/connectivity/network_monitor.dart';
+import 'package:flagkit/src/network/remote_config_transport.dart';
 import 'package:flutter/foundation.dart';
 
 /// How an app configures the SDK, once, at `FlagKit.initialize`.
@@ -14,6 +16,8 @@ final class FlagKitConfig {
     this.cacheExpiration = const Duration(hours: 24),
     this.startupWait = Duration.zero,
     this.debugMode = false,
+    this.transport,
+    this.networkMonitor,
   });
 
   /// The shortest [refreshInterval]: a refresh per minute is already far
@@ -44,6 +48,15 @@ final class FlagKitConfig {
   /// Whether the SDK logs what it does. Off, it is silent.
   final bool debugMode;
 
+  /// Where definitions come from. `null` (the default) is an empty
+  /// `FakeRemoteConfigServer`: this project has no real backend, so an app
+  /// passes one with its flags (or its own transport).
+  final RemoteConfigTransport? transport;
+
+  /// Whether the device is online. `null` (the default) is a
+  /// `ConnectivityNetworkMonitor`; an app can pass its own (a demo switch).
+  final NetworkMonitor? networkMonitor;
+
   /// Every rule this configuration breaks, in words; empty when valid.
   List<String> get problems => [
     if (apiKey.trim().isEmpty) 'apiKey must not be blank',
@@ -71,7 +84,9 @@ final class FlagKitConfig {
       other.refreshInterval == refreshInterval &&
       other.cacheExpiration == cacheExpiration &&
       other.startupWait == startupWait &&
-      other.debugMode == debugMode;
+      other.debugMode == debugMode &&
+      identical(other.transport, transport) &&
+      identical(other.networkMonitor, networkMonitor);
 
   @override
   int get hashCode => Object.hash(
@@ -80,6 +95,8 @@ final class FlagKitConfig {
     cacheExpiration,
     startupWait,
     debugMode,
+    identityHashCode(transport),
+    identityHashCode(networkMonitor),
   );
 
   // The key is masked: a config printed in a log or a crash report must not
@@ -88,7 +105,10 @@ final class FlagKitConfig {
   String toString() =>
       'FlagKitConfig(apiKey: ${_masked(apiKey)}, '
       'refreshInterval: $refreshInterval, cacheExpiration: $cacheExpiration, '
-      'startupWait: $startupWait, debugMode: $debugMode)';
+      'startupWait: $startupWait, debugMode: $debugMode, '
+      'transport: ${transport?.runtimeType ?? 'FakeRemoteConfigServer (default)'}, '
+      'networkMonitor: '
+      '${networkMonitor?.runtimeType ?? 'ConnectivityNetworkMonitor (default)'})';
 
   static String _masked(String key) =>
       key.length <= 4 ? '****' : '${key.substring(0, 4)}****';

@@ -733,18 +733,669 @@ class MetaEntriesCompanion extends UpdateCompanion<MetaRow> {
   }
 }
 
+class $RefreshesTable extends Refreshes
+    with TableInfo<$RefreshesTable, RefreshRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RefreshesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _triggerMeta = const VerificationMeta(
+    'trigger',
+  );
+  @override
+  late final GeneratedColumn<String> trigger = GeneratedColumn<String>(
+    'trigger',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _finishedAtMeta = const VerificationMeta(
+    'finishedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> finishedAt = GeneratedColumn<DateTime>(
+    'finished_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _outcomeMeta = const VerificationMeta(
+    'outcome',
+  );
+  @override
+  late final GeneratedColumn<String> outcome = GeneratedColumn<String>(
+    'outcome',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _addedMeta = const VerificationMeta('added');
+  @override
+  late final GeneratedColumn<int> added = GeneratedColumn<int>(
+    'added',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _changedMeta = const VerificationMeta(
+    'changed',
+  );
+  @override
+  late final GeneratedColumn<int> changed = GeneratedColumn<int>(
+    'changed',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _removedMeta = const VerificationMeta(
+    'removed',
+  );
+  @override
+  late final GeneratedColumn<int> removed = GeneratedColumn<int>(
+    'removed',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _skippedMeta = const VerificationMeta(
+    'skipped',
+  );
+  @override
+  late final GeneratedColumn<int> skipped = GeneratedColumn<int>(
+    'skipped',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _configVersionMeta = const VerificationMeta(
+    'configVersion',
+  );
+  @override
+  late final GeneratedColumn<int> configVersion = GeneratedColumn<int>(
+    'config_version',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _errorMeta = const VerificationMeta('error');
+  @override
+  late final GeneratedColumn<String> error = GeneratedColumn<String>(
+    'error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    trigger,
+    startedAt,
+    finishedAt,
+    outcome,
+    added,
+    changed,
+    removed,
+    skipped,
+    configVersion,
+    error,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'refreshes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RefreshRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('trigger')) {
+      context.handle(
+        _triggerMeta,
+        trigger.isAcceptableOrUnknown(data['trigger']!, _triggerMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_triggerMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('finished_at')) {
+      context.handle(
+        _finishedAtMeta,
+        finishedAt.isAcceptableOrUnknown(data['finished_at']!, _finishedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_finishedAtMeta);
+    }
+    if (data.containsKey('outcome')) {
+      context.handle(
+        _outcomeMeta,
+        outcome.isAcceptableOrUnknown(data['outcome']!, _outcomeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_outcomeMeta);
+    }
+    if (data.containsKey('added')) {
+      context.handle(
+        _addedMeta,
+        added.isAcceptableOrUnknown(data['added']!, _addedMeta),
+      );
+    }
+    if (data.containsKey('changed')) {
+      context.handle(
+        _changedMeta,
+        changed.isAcceptableOrUnknown(data['changed']!, _changedMeta),
+      );
+    }
+    if (data.containsKey('removed')) {
+      context.handle(
+        _removedMeta,
+        removed.isAcceptableOrUnknown(data['removed']!, _removedMeta),
+      );
+    }
+    if (data.containsKey('skipped')) {
+      context.handle(
+        _skippedMeta,
+        skipped.isAcceptableOrUnknown(data['skipped']!, _skippedMeta),
+      );
+    }
+    if (data.containsKey('config_version')) {
+      context.handle(
+        _configVersionMeta,
+        configVersion.isAcceptableOrUnknown(
+          data['config_version']!,
+          _configVersionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('error')) {
+      context.handle(
+        _errorMeta,
+        error.isAcceptableOrUnknown(data['error']!, _errorMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RefreshRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RefreshRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      trigger: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}trigger'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      finishedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}finished_at'],
+      )!,
+      outcome: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}outcome'],
+      )!,
+      added: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}added'],
+      )!,
+      changed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}changed'],
+      )!,
+      removed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}removed'],
+      )!,
+      skipped: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}skipped'],
+      )!,
+      configVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}config_version'],
+      ),
+      error: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}error'],
+      ),
+    );
+  }
+
+  @override
+  $RefreshesTable createAlias(String alias) {
+    return $RefreshesTable(attachedDatabase, alias);
+  }
+}
+
+class RefreshRow extends DataClass implements Insertable<RefreshRow> {
+  final int id;
+  final String trigger;
+  final DateTime startedAt;
+  final DateTime finishedAt;
+  final String outcome;
+  final int added;
+  final int changed;
+  final int removed;
+  final int skipped;
+  final int? configVersion;
+  final String? error;
+  const RefreshRow({
+    required this.id,
+    required this.trigger,
+    required this.startedAt,
+    required this.finishedAt,
+    required this.outcome,
+    required this.added,
+    required this.changed,
+    required this.removed,
+    required this.skipped,
+    this.configVersion,
+    this.error,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['trigger'] = Variable<String>(trigger);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    map['finished_at'] = Variable<DateTime>(finishedAt);
+    map['outcome'] = Variable<String>(outcome);
+    map['added'] = Variable<int>(added);
+    map['changed'] = Variable<int>(changed);
+    map['removed'] = Variable<int>(removed);
+    map['skipped'] = Variable<int>(skipped);
+    if (!nullToAbsent || configVersion != null) {
+      map['config_version'] = Variable<int>(configVersion);
+    }
+    if (!nullToAbsent || error != null) {
+      map['error'] = Variable<String>(error);
+    }
+    return map;
+  }
+
+  RefreshesCompanion toCompanion(bool nullToAbsent) {
+    return RefreshesCompanion(
+      id: Value(id),
+      trigger: Value(trigger),
+      startedAt: Value(startedAt),
+      finishedAt: Value(finishedAt),
+      outcome: Value(outcome),
+      added: Value(added),
+      changed: Value(changed),
+      removed: Value(removed),
+      skipped: Value(skipped),
+      configVersion: configVersion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(configVersion),
+      error: error == null && nullToAbsent
+          ? const Value.absent()
+          : Value(error),
+    );
+  }
+
+  factory RefreshRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RefreshRow(
+      id: serializer.fromJson<int>(json['id']),
+      trigger: serializer.fromJson<String>(json['trigger']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      finishedAt: serializer.fromJson<DateTime>(json['finishedAt']),
+      outcome: serializer.fromJson<String>(json['outcome']),
+      added: serializer.fromJson<int>(json['added']),
+      changed: serializer.fromJson<int>(json['changed']),
+      removed: serializer.fromJson<int>(json['removed']),
+      skipped: serializer.fromJson<int>(json['skipped']),
+      configVersion: serializer.fromJson<int?>(json['configVersion']),
+      error: serializer.fromJson<String?>(json['error']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'trigger': serializer.toJson<String>(trigger),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'finishedAt': serializer.toJson<DateTime>(finishedAt),
+      'outcome': serializer.toJson<String>(outcome),
+      'added': serializer.toJson<int>(added),
+      'changed': serializer.toJson<int>(changed),
+      'removed': serializer.toJson<int>(removed),
+      'skipped': serializer.toJson<int>(skipped),
+      'configVersion': serializer.toJson<int?>(configVersion),
+      'error': serializer.toJson<String?>(error),
+    };
+  }
+
+  RefreshRow copyWith({
+    int? id,
+    String? trigger,
+    DateTime? startedAt,
+    DateTime? finishedAt,
+    String? outcome,
+    int? added,
+    int? changed,
+    int? removed,
+    int? skipped,
+    Value<int?> configVersion = const Value.absent(),
+    Value<String?> error = const Value.absent(),
+  }) => RefreshRow(
+    id: id ?? this.id,
+    trigger: trigger ?? this.trigger,
+    startedAt: startedAt ?? this.startedAt,
+    finishedAt: finishedAt ?? this.finishedAt,
+    outcome: outcome ?? this.outcome,
+    added: added ?? this.added,
+    changed: changed ?? this.changed,
+    removed: removed ?? this.removed,
+    skipped: skipped ?? this.skipped,
+    configVersion: configVersion.present
+        ? configVersion.value
+        : this.configVersion,
+    error: error.present ? error.value : this.error,
+  );
+  RefreshRow copyWithCompanion(RefreshesCompanion data) {
+    return RefreshRow(
+      id: data.id.present ? data.id.value : this.id,
+      trigger: data.trigger.present ? data.trigger.value : this.trigger,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      finishedAt: data.finishedAt.present
+          ? data.finishedAt.value
+          : this.finishedAt,
+      outcome: data.outcome.present ? data.outcome.value : this.outcome,
+      added: data.added.present ? data.added.value : this.added,
+      changed: data.changed.present ? data.changed.value : this.changed,
+      removed: data.removed.present ? data.removed.value : this.removed,
+      skipped: data.skipped.present ? data.skipped.value : this.skipped,
+      configVersion: data.configVersion.present
+          ? data.configVersion.value
+          : this.configVersion,
+      error: data.error.present ? data.error.value : this.error,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RefreshRow(')
+          ..write('id: $id, ')
+          ..write('trigger: $trigger, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('finishedAt: $finishedAt, ')
+          ..write('outcome: $outcome, ')
+          ..write('added: $added, ')
+          ..write('changed: $changed, ')
+          ..write('removed: $removed, ')
+          ..write('skipped: $skipped, ')
+          ..write('configVersion: $configVersion, ')
+          ..write('error: $error')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    trigger,
+    startedAt,
+    finishedAt,
+    outcome,
+    added,
+    changed,
+    removed,
+    skipped,
+    configVersion,
+    error,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RefreshRow &&
+          other.id == this.id &&
+          other.trigger == this.trigger &&
+          other.startedAt == this.startedAt &&
+          other.finishedAt == this.finishedAt &&
+          other.outcome == this.outcome &&
+          other.added == this.added &&
+          other.changed == this.changed &&
+          other.removed == this.removed &&
+          other.skipped == this.skipped &&
+          other.configVersion == this.configVersion &&
+          other.error == this.error);
+}
+
+class RefreshesCompanion extends UpdateCompanion<RefreshRow> {
+  final Value<int> id;
+  final Value<String> trigger;
+  final Value<DateTime> startedAt;
+  final Value<DateTime> finishedAt;
+  final Value<String> outcome;
+  final Value<int> added;
+  final Value<int> changed;
+  final Value<int> removed;
+  final Value<int> skipped;
+  final Value<int?> configVersion;
+  final Value<String?> error;
+  const RefreshesCompanion({
+    this.id = const Value.absent(),
+    this.trigger = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.finishedAt = const Value.absent(),
+    this.outcome = const Value.absent(),
+    this.added = const Value.absent(),
+    this.changed = const Value.absent(),
+    this.removed = const Value.absent(),
+    this.skipped = const Value.absent(),
+    this.configVersion = const Value.absent(),
+    this.error = const Value.absent(),
+  });
+  RefreshesCompanion.insert({
+    this.id = const Value.absent(),
+    required String trigger,
+    required DateTime startedAt,
+    required DateTime finishedAt,
+    required String outcome,
+    this.added = const Value.absent(),
+    this.changed = const Value.absent(),
+    this.removed = const Value.absent(),
+    this.skipped = const Value.absent(),
+    this.configVersion = const Value.absent(),
+    this.error = const Value.absent(),
+  }) : trigger = Value(trigger),
+       startedAt = Value(startedAt),
+       finishedAt = Value(finishedAt),
+       outcome = Value(outcome);
+  static Insertable<RefreshRow> custom({
+    Expression<int>? id,
+    Expression<String>? trigger,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? finishedAt,
+    Expression<String>? outcome,
+    Expression<int>? added,
+    Expression<int>? changed,
+    Expression<int>? removed,
+    Expression<int>? skipped,
+    Expression<int>? configVersion,
+    Expression<String>? error,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (trigger != null) 'trigger': trigger,
+      if (startedAt != null) 'started_at': startedAt,
+      if (finishedAt != null) 'finished_at': finishedAt,
+      if (outcome != null) 'outcome': outcome,
+      if (added != null) 'added': added,
+      if (changed != null) 'changed': changed,
+      if (removed != null) 'removed': removed,
+      if (skipped != null) 'skipped': skipped,
+      if (configVersion != null) 'config_version': configVersion,
+      if (error != null) 'error': error,
+    });
+  }
+
+  RefreshesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? trigger,
+    Value<DateTime>? startedAt,
+    Value<DateTime>? finishedAt,
+    Value<String>? outcome,
+    Value<int>? added,
+    Value<int>? changed,
+    Value<int>? removed,
+    Value<int>? skipped,
+    Value<int?>? configVersion,
+    Value<String?>? error,
+  }) {
+    return RefreshesCompanion(
+      id: id ?? this.id,
+      trigger: trigger ?? this.trigger,
+      startedAt: startedAt ?? this.startedAt,
+      finishedAt: finishedAt ?? this.finishedAt,
+      outcome: outcome ?? this.outcome,
+      added: added ?? this.added,
+      changed: changed ?? this.changed,
+      removed: removed ?? this.removed,
+      skipped: skipped ?? this.skipped,
+      configVersion: configVersion ?? this.configVersion,
+      error: error ?? this.error,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (trigger.present) {
+      map['trigger'] = Variable<String>(trigger.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (finishedAt.present) {
+      map['finished_at'] = Variable<DateTime>(finishedAt.value);
+    }
+    if (outcome.present) {
+      map['outcome'] = Variable<String>(outcome.value);
+    }
+    if (added.present) {
+      map['added'] = Variable<int>(added.value);
+    }
+    if (changed.present) {
+      map['changed'] = Variable<int>(changed.value);
+    }
+    if (removed.present) {
+      map['removed'] = Variable<int>(removed.value);
+    }
+    if (skipped.present) {
+      map['skipped'] = Variable<int>(skipped.value);
+    }
+    if (configVersion.present) {
+      map['config_version'] = Variable<int>(configVersion.value);
+    }
+    if (error.present) {
+      map['error'] = Variable<String>(error.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RefreshesCompanion(')
+          ..write('id: $id, ')
+          ..write('trigger: $trigger, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('finishedAt: $finishedAt, ')
+          ..write('outcome: $outcome, ')
+          ..write('added: $added, ')
+          ..write('changed: $changed, ')
+          ..write('removed: $removed, ')
+          ..write('skipped: $skipped, ')
+          ..write('configVersion: $configVersion, ')
+          ..write('error: $error')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$FlagKitDatabase extends GeneratedDatabase {
   _$FlagKitDatabase(QueryExecutor e) : super(e);
   $FlagKitDatabaseManager get managers => $FlagKitDatabaseManager(this);
   late final $FlagsTable flags = $FlagsTable(this);
   late final $MetaEntriesTable metaEntries = $MetaEntriesTable(this);
+  late final $RefreshesTable refreshes = $RefreshesTable(this);
   late final FlagDao flagDao = FlagDao(this as FlagKitDatabase);
   late final MetaDao metaDao = MetaDao(this as FlagKitDatabase);
+  late final RefreshDao refreshDao = RefreshDao(this as FlagKitDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [flags, metaEntries];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    flags,
+    metaEntries,
+    refreshes,
+  ];
   @override
   DriftDatabaseOptions get options =>
       const DriftDatabaseOptions(storeDateTimeAsText: true);
@@ -1152,6 +1803,325 @@ typedef $$MetaEntriesTableProcessedTableManager =
       MetaRow,
       PrefetchHooks Function()
     >;
+typedef $$RefreshesTableCreateCompanionBuilder = RefreshesCompanion Function({
+  Value<int> id,
+  required String trigger,
+  required DateTime startedAt,
+  required DateTime finishedAt,
+  required String outcome,
+  Value<int> added,
+  Value<int> changed,
+  Value<int> removed,
+  Value<int> skipped,
+  Value<int?> configVersion,
+  Value<String?> error,
+});
+typedef $$RefreshesTableUpdateCompanionBuilder = RefreshesCompanion Function({
+  Value<int> id,
+  Value<String> trigger,
+  Value<DateTime> startedAt,
+  Value<DateTime> finishedAt,
+  Value<String> outcome,
+  Value<int> added,
+  Value<int> changed,
+  Value<int> removed,
+  Value<int> skipped,
+  Value<int?> configVersion,
+  Value<String?> error,
+});
+
+class $$RefreshesTableFilterComposer
+    extends Composer<_$FlagKitDatabase, $RefreshesTable> {
+  $$RefreshesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get trigger => $composableBuilder(
+    column: $table.trigger,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get outcome => $composableBuilder(
+    column: $table.outcome,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get added => $composableBuilder(
+    column: $table.added,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get changed => $composableBuilder(
+    column: $table.changed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get removed => $composableBuilder(
+    column: $table.removed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get skipped => $composableBuilder(
+    column: $table.skipped,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get configVersion => $composableBuilder(
+    column: $table.configVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get error => $composableBuilder(
+    column: $table.error,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RefreshesTableOrderingComposer
+    extends Composer<_$FlagKitDatabase, $RefreshesTable> {
+  $$RefreshesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get trigger => $composableBuilder(
+    column: $table.trigger,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get outcome => $composableBuilder(
+    column: $table.outcome,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get added => $composableBuilder(
+    column: $table.added,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get changed => $composableBuilder(
+    column: $table.changed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get removed => $composableBuilder(
+    column: $table.removed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get skipped => $composableBuilder(
+    column: $table.skipped,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get configVersion => $composableBuilder(
+    column: $table.configVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get error => $composableBuilder(
+    column: $table.error,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RefreshesTableAnnotationComposer
+    extends Composer<_$FlagKitDatabase, $RefreshesTable> {
+  $$RefreshesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get trigger =>
+      $composableBuilder(column: $table.trigger, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get outcome =>
+      $composableBuilder(column: $table.outcome, builder: (column) => column);
+
+  GeneratedColumn<int> get added =>
+      $composableBuilder(column: $table.added, builder: (column) => column);
+
+  GeneratedColumn<int> get changed =>
+      $composableBuilder(column: $table.changed, builder: (column) => column);
+
+  GeneratedColumn<int> get removed =>
+      $composableBuilder(column: $table.removed, builder: (column) => column);
+
+  GeneratedColumn<int> get skipped =>
+      $composableBuilder(column: $table.skipped, builder: (column) => column);
+
+  GeneratedColumn<int> get configVersion => $composableBuilder(
+    column: $table.configVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get error =>
+      $composableBuilder(column: $table.error, builder: (column) => column);
+}
+
+class $$RefreshesTableTableManager
+    extends
+        RootTableManager<
+          _$FlagKitDatabase,
+          $RefreshesTable,
+          RefreshRow,
+          $$RefreshesTableFilterComposer,
+          $$RefreshesTableOrderingComposer,
+          $$RefreshesTableAnnotationComposer,
+          $$RefreshesTableCreateCompanionBuilder,
+          $$RefreshesTableUpdateCompanionBuilder,
+          (
+            RefreshRow,
+            BaseReferences<_$FlagKitDatabase, $RefreshesTable, RefreshRow>,
+          ),
+          RefreshRow,
+          PrefetchHooks Function()
+        > {
+  $$RefreshesTableTableManager(_$FlagKitDatabase db, $RefreshesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RefreshesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RefreshesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RefreshesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> trigger = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime> finishedAt = const Value.absent(),
+                Value<String> outcome = const Value.absent(),
+                Value<int> added = const Value.absent(),
+                Value<int> changed = const Value.absent(),
+                Value<int> removed = const Value.absent(),
+                Value<int> skipped = const Value.absent(),
+                Value<int?> configVersion = const Value.absent(),
+                Value<String?> error = const Value.absent(),
+              }) => RefreshesCompanion(
+                id: id,
+                trigger: trigger,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                outcome: outcome,
+                added: added,
+                changed: changed,
+                removed: removed,
+                skipped: skipped,
+                configVersion: configVersion,
+                error: error,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String trigger,
+                required DateTime startedAt,
+                required DateTime finishedAt,
+                required String outcome,
+                Value<int> added = const Value.absent(),
+                Value<int> changed = const Value.absent(),
+                Value<int> removed = const Value.absent(),
+                Value<int> skipped = const Value.absent(),
+                Value<int?> configVersion = const Value.absent(),
+                Value<String?> error = const Value.absent(),
+              }) => RefreshesCompanion.insert(
+                id: id,
+                trigger: trigger,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                outcome: outcome,
+                added: added,
+                changed: changed,
+                removed: removed,
+                skipped: skipped,
+                configVersion: configVersion,
+                error: error,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RefreshesTable, RefreshRow>(table),
+                  BaseReferences<
+                    _$FlagKitDatabase,
+                    $RefreshesTable,
+                    RefreshRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RefreshesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$FlagKitDatabase,
+      $RefreshesTable,
+      RefreshRow,
+      $$RefreshesTableFilterComposer,
+      $$RefreshesTableOrderingComposer,
+      $$RefreshesTableAnnotationComposer,
+      $$RefreshesTableCreateCompanionBuilder,
+      $$RefreshesTableUpdateCompanionBuilder,
+      (
+        RefreshRow,
+        BaseReferences<_$FlagKitDatabase, $RefreshesTable, RefreshRow>,
+      ),
+      RefreshRow,
+      PrefetchHooks Function()
+    >;
 
 class $FlagKitDatabaseManager {
   final _$FlagKitDatabase _db;
@@ -1160,4 +2130,6 @@ class $FlagKitDatabaseManager {
       $$FlagsTableTableManager(_db, _db.flags);
   $$MetaEntriesTableTableManager get metaEntries =>
       $$MetaEntriesTableTableManager(_db, _db.metaEntries);
+  $$RefreshesTableTableManager get refreshes =>
+      $$RefreshesTableTableManager(_db, _db.refreshes);
 }

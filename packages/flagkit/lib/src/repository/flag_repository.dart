@@ -95,6 +95,20 @@ final class FlagRepository {
     );
   }
 
+  /// The server confirmed the cache is current ("not modified") at
+  /// [fetchedAt]: the same definitions, fresh again, and now confirmed in
+  /// this session (source `remote`).
+  Future<FlagSnapshot> markFetched(DateTime fetchedAt) async {
+    final at = fetchedAt.toUtc();
+    await _database.metaDao.write(MetaKeys.fetchedAt, at.toIso8601String());
+    return _snapshot = FlagSnapshot(
+      flags: _snapshot.flags,
+      source: FlagSource.remote,
+      fetchedAt: at,
+      configVersion: _snapshot.configVersion,
+    );
+  }
+
   /// Forgets the cached definitions, when they were fetched and their
   /// version. The anonymous id stays: clearing a cache isn't a new install.
   Future<FlagSnapshot> clear() async {

@@ -1,4 +1,5 @@
 import 'package:flagkit/src/model/cache_status.dart';
+import 'package:flagkit/src/model/refresh_record.dart';
 import 'package:flutter/foundation.dart';
 
 /// The SDK's state, for a debug screen: `FlagKit.debug.watchStats()`.
@@ -11,6 +12,7 @@ final class FlagKitStats {
     required this.anonymousId,
     this.fetchedAt,
     this.configVersion,
+    this.lastRefresh,
   });
 
   /// How fresh the cached flags are.
@@ -28,6 +30,9 @@ final class FlagKitStats {
 
   /// The server's version of the cached flags, if known.
   final int? configVersion;
+
+  /// The latest refresh in the log, if any.
+  final RefreshRecord? lastRefresh;
 
   @override
   bool operator ==(Object other) =>

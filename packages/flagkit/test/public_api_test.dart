@@ -47,11 +47,26 @@ void main() {
   test('every name is usable from a host', () async {
     FlagKitTesting.useInMemoryDatabase();
     addTearDown(FlagKitTesting.useDeviceDatabase);
-    const config = FlagKitConfig(
+    final server = FakeRemoteConfigServer(
+      latency: Duration.zero,
+      flags: const [
+        {
+          'key': 'new_home_screen',
+          'type': 'boolean',
+          'value': true,
+          'offValue': false,
+        },
+      ],
+    );
+    final NetworkMonitor monitor = FakeNetworkMonitor();
+    expect(ConnectivityNetworkMonitor(), isA<NetworkMonitor>());
+    final config = FlagKitConfig(
       apiKey: 'demo_key',
-      refreshInterval: Duration(minutes: 5),
-      cacheExpiration: Duration(hours: 1),
-      startupWait: Duration(seconds: 1),
+      refreshInterval: const Duration(minutes: 5),
+      cacheExpiration: const Duration(hours: 1),
+      startupWait: const Duration(seconds: 1),
+      transport: server,
+      networkMonitor: monitor,
     );
     await FlagKit.initialize(config);
     addTearDown(FlagKit.shutdown);
@@ -66,7 +81,8 @@ void main() {
       ),
     );
     expect(FlagKit.context.userId, 'user_123');
-    expect(FlagKit.isEnabled('new_home_screen'), isFalse);
+    // The startup refresh, within startupWait: the server's value.
+    expect(FlagKit.isEnabled('new_home_screen'), isTrue);
     expect(FlagKit.getString('home_theme', 'classic'), 'classic');
     expect(FlagKit.getInt('feed_page_size', 20), 20);
     expect(FlagKit.getDouble('discount_percentage', 0), 0);
@@ -82,8 +98,29 @@ void main() {
     final FlagKitDebug debug = FlagKit.debug;
     final FlagKitStats stats = await debug.watchStats().first;
     expect(describeStatus(stats.cacheStatus), isNotEmpty);
-    expect(stats.flagCount, 0);
+    expect(stats.flagCount, 0, reason: 'cleared');
     expect(stats.anonymousId, isNotEmpty);
+    final RefreshRecord last = stats.lastRefresh!;
+    expect(describeTrigger(last.trigger), isNotEmpty);
+    expect(describeOutcome(last.outcome), isNotEmpty);
+    final List<RefreshRecord> log = await debug.watchRefreshes().first;
+    expect(log, isNotEmpty);
+    expect(await server.watchStats().first, isA<FakeServerStats>());
+
+    // A host can write its own transport and throw the SDK's errors.
+    final RemoteConfigTransport custom = _HostTransport();
+    final FetchResponse response = await custom.fetch(
+      const FetchRequest(apiKey: 'k', sdkVersion: '1.0.0', ifVersion: 3),
+    );
+    expect(response, isA<ConfigNotModified>());
+    expect(const FetchedConfig({'version': 1}).json, isNotEmpty);
+    for (final error in const <TransportException>[
+      ServerUnreachable(),
+      ServerFailure(503),
+      ApiKeyRejected(),
+    ]) {
+      expect(meaningOf(error), isNotEmpty);
+    }
     expect(FlagKit.version, matches(RegExp(r'^\d+\.\d+\.\d+$')));
 
     for (final value in <FlagValue>[
@@ -114,6 +151,22 @@ void main() {
 
 const _exported = [
   'FlagKit',
+  'NetworkMonitor',
+  'ConnectivityNetworkMonitor',
+  'RefreshRecord',
+  'RefreshTrigger',
+  'RefreshOutcome',
+  'FakeRemoteConfigServer',
+  'FakeServerStats',
+  'RemoteConfigTransport',
+  'FetchRequest',
+  'FetchResponse',
+  'FetchedConfig',
+  'ConfigNotModified',
+  'TransportException',
+  'ServerUnreachable',
+  'ServerFailure',
+  'ApiKeyRejected',
   'FlagKitDebug',
   'FlagKitStats',
   'CacheStatus',
@@ -139,7 +192,7 @@ const _exported = [
   'NotInitialized',
 ];
 
-const _testing = ['FlagKitTesting'];
+const _testing = ['FlagKitTesting', 'FakeNetworkMonitor'];
 
 // What a host might show for each. Exhaustive with no default: a new case
 // is a compile error here, as it would be in every such app.
@@ -197,3 +250,32 @@ String describeStatus(CacheStatus status) => switch (status) {
   CacheStatus.expired => 'old, refreshing',
   CacheStatus.empty => 'nothing cached',
 };
+
+String describeTrigger(RefreshTrigger trigger) => switch (trigger) {
+  RefreshTrigger.startup => 'at start',
+  RefreshTrigger.interval => 'every so often',
+  RefreshTrigger.resumed => 'back in the app',
+  RefreshTrigger.reconnect => 'back online',
+  RefreshTrigger.manual => 'asked',
+};
+
+String describeOutcome(RefreshOutcome outcome) => switch (outcome) {
+  RefreshOutcome.updated => 'new flags',
+  RefreshOutcome.notModified => 'nothing new',
+  RefreshOutcome.offline => 'offline',
+  RefreshOutcome.failed => 'failed',
+  RefreshOutcome.unauthorized => 'bad key',
+};
+
+/// Sealed: a host's switch over the errors is exhaustive too.
+String meaningOf(TransportException error) => switch (error) {
+  ServerUnreachable() => 'not reached',
+  ServerFailure(:final statusCode) => 'server error $statusCode',
+  ApiKeyRejected() => 'bad key',
+};
+
+class _HostTransport implements RemoteConfigTransport {
+  @override
+  Future<FetchResponse> fetch(FetchRequest request) async =>
+      const ConfigNotModified();
+}

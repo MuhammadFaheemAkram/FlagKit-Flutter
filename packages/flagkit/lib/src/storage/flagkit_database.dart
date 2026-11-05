@@ -2,7 +2,9 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flagkit/src/storage/flag_dao.dart';
+import 'package:flagkit/src/storage/flagkit_database.steps.dart';
 import 'package:flagkit/src/storage/meta_dao.dart';
+import 'package:flagkit/src/storage/refresh_dao.dart';
 import 'package:flagkit/src/storage/tables.dart';
 import 'package:meta/meta.dart';
 
@@ -16,7 +18,10 @@ part 'flagkit_database.g.dart';
 /// at `initialize`, and answers from there. The database is what makes the
 /// flags survive a restart and work offline.
 @internal
-@DriftDatabase(tables: [Flags, MetaEntries], daos: [FlagDao, MetaDao])
+@DriftDatabase(
+  tables: [Flags, MetaEntries, Refreshes],
+  daos: [FlagDao, MetaDao, RefreshDao],
+)
 class FlagKitDatabase extends _$FlagKitDatabase {
   FlagKitDatabase(super.executor);
 
@@ -39,8 +44,16 @@ class FlagKitDatabase extends _$FlagKitDatabase {
   /// migration: an SDK's database upgrades in place on its users' devices.
   ///
   /// 1. The cached definitions and `meta`.
+  /// 2. The refresh log.
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: stepByStep(
+      from1To2: (m, schema) => m.createTable(schema.refreshes),
+    ),
+  );
 
   /// What the debug stats show, as one row, in one query that watches both
   /// tables: every write to either re-runs it.
@@ -50,9 +63,10 @@ class FlagKitDatabase extends _$FlagKitDatabase {
       (SELECT COUNT(*) FROM flags) AS flag_count,
       (SELECT value FROM meta WHERE name = 'fetched_at') AS fetched_at,
       (SELECT value FROM meta WHERE name = 'config_version') AS config_version,
-      (SELECT value FROM meta WHERE name = 'anonymous_id') AS anonymous_id
+      (SELECT value FROM meta WHERE name = 'anonymous_id') AS anonymous_id,
+      (SELECT id FROM refreshes ORDER BY id DESC LIMIT 1) AS last_refresh
     ''',
-    readsFrom: {flags, metaEntries},
+    readsFrom: {flags, metaEntries, refreshes},
   ).watchSingle();
 }
 

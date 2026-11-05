@@ -1,4 +1,5 @@
 import 'package:flagkit/flagkit.dart';
+import 'package:flagkit/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -117,6 +118,29 @@ void main() {
       isNot(
         const FlagKitConfig(apiKey: 'k', startupWait: Duration(seconds: 1)),
       ),
+    );
+  });
+
+  test('the transport and the monitor count by identity', () {
+    final server = FakeRemoteConfigServer();
+    final monitor = FakeNetworkMonitor();
+    FlagKitConfig config({
+      RemoteConfigTransport? transport,
+      NetworkMonitor? m,
+    }) => FlagKitConfig(apiKey: 'k', transport: transport, networkMonitor: m);
+
+    expect(
+      config(transport: server, m: monitor),
+      config(transport: server, m: monitor),
+    );
+    expect(
+      config(transport: server),
+      isNot(config(transport: FakeRemoteConfigServer())),
+    );
+    expect(config(m: monitor), isNot(config(m: FakeNetworkMonitor())));
+    expect(
+      config(transport: server).toString(),
+      contains('FakeRemoteConfigServer'),
     );
   });
 }

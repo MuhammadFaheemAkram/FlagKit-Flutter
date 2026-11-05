@@ -4,6 +4,7 @@ import 'package:flagkit_sample/domain/context/user_context.dart';
 import 'package:flagkit_sample/domain/debug/flags_debug.dart';
 import 'package:flagkit_sample/domain/flags/app_flags.dart';
 import 'package:flagkit_sample/domain/flags/home_config.dart';
+import 'package:flagkit_sample/domain/network/device_network.dart';
 
 /// [AppFlags] with plain values a test sets, then [changed] to tell the
 /// Cubits.
@@ -106,8 +107,40 @@ final class FakeFlagsDebug implements FlagsDebug {
   @override
   Stream<CacheInfo> watchCache() => _cache.stream;
 
+  /// What [refresh] returns; hold it with [refreshGate].
+  RefreshSummary refreshResult = const RefreshSummary(RefreshKind.upToDate);
+  Completer<void>? refreshGate;
+  int refreshes = 0;
+
+  @override
+  Future<RefreshSummary> refresh() async {
+    refreshes++;
+    await refreshGate?.future;
+    return refreshResult;
+  }
+
   Future<void> close() async {
     await _changes.close();
     await _cache.close();
   }
+}
+
+/// [DeviceNetwork] in memory: the status a test sets, and the switch.
+final class FakeDeviceNetwork implements DeviceNetwork {
+  NetworkStatus status = const NetworkStatus(deviceOnline: true);
+  final _changes = StreamController<NetworkStatus>.broadcast();
+
+  void set(NetworkStatus value) {
+    status = value;
+    _changes.add(value);
+  }
+
+  @override
+  Stream<NetworkStatus> watchStatus() => _changes.stream;
+
+  @override
+  void simulateOffline(bool offline) =>
+      set(status.copyWith(simulatingOffline: offline));
+
+  Future<void> close() => _changes.close();
 }

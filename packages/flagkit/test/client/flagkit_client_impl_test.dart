@@ -5,6 +5,7 @@ import 'package:flagkit/flagkit.dart';
 import 'package:flagkit/src/client/flagkit_client_impl.dart';
 import 'package:flagkit/src/storage/flagkit_database.dart';
 import 'package:flagkit/src/util/flagkit_logger.dart';
+import 'package:flagkit/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/log_recorder.dart';
@@ -32,8 +33,18 @@ void _client() {
   });
   tearDown(() => client.shutdown());
 
-  Future<void> start({DateTime Function()? now}) async =>
-      client = await openTestClient(database: db, logs: logs, now: now);
+  Future<void> start({DateTime Function()? now, FlagKitConfig? config}) async =>
+      client = await openTestClient(
+        database: db,
+        logs: logs,
+        now: now,
+        config: config,
+      );
+
+  // Offline: the startup refresh attempts nothing, so what's cached stays
+  // as the test put it.
+  FlagKitConfig offline() =>
+      testConfig(monitor: FakeNetworkMonitor(online: false));
 
   group('an empty cache', () {
     setUp(start);
@@ -153,7 +164,7 @@ void _client() {
 
   group('debug stats', () {
     test('an empty cache: empty, no flags, the anonymous id', () async {
-      await start();
+      await start(config: offline());
 
       expect(
         await client.debug.watchStats().first,
@@ -174,7 +185,7 @@ void _client() {
           fetchedAt: testNow.subtract(const Duration(hours: 2)),
           configVersion: 7,
         );
-        await start();
+        await start(config: offline());
 
         final stats = await client.debug.watchStats().first;
         expect(stats.cacheStatus, CacheStatus.stale);
@@ -231,11 +242,6 @@ void _client() {
         hasLength(1),
       );
     });
-  });
-
-  test('refresh has nothing to fetch from yet, and says so', () async {
-    await start();
-    expect(await client.refresh(), isA<Failed>());
   });
 
   test('after shutdown: defaults with notInitialized; calls ignored', () async {

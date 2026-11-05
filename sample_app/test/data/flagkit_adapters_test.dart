@@ -172,6 +172,81 @@ void main() {
       );
     });
 
+    test('a refresh, in the app\'s words, for every result', () async {
+      for (final (result, summary) in <(RefreshResult, RefreshSummary)>[
+        (
+          const Updated(
+            added: {'a'},
+            changed: {'b', 'c'},
+            removed: {'d'},
+            skipped: 2,
+          ),
+          const RefreshSummary(RefreshKind.updated, changed: 4, skipped: 2),
+        ),
+        (const NotModified(), const RefreshSummary(RefreshKind.upToDate)),
+        (const Offline(), const RefreshSummary(RefreshKind.offline)),
+        (
+          const Failed(reason: 'server error 503'),
+          const RefreshSummary(RefreshKind.failed, reason: 'server error 503'),
+        ),
+        (const Unauthorized(), const RefreshSummary(RefreshKind.rejected)),
+        (
+          const NotInitialized(),
+          const RefreshSummary(
+            RefreshKind.failed,
+            reason: 'FlagKit isn\'t running',
+          ),
+        ),
+      ]) {
+        client.refreshResult = result;
+        expect(await debug.refresh(), summary, reason: '$result');
+      }
+    });
+
+    test('the last refresh, every trigger and outcome', () async {
+      final seen = <LastRefresh?>[];
+      final subscription = debug.watchCache().listen(
+        (cache) => seen.add(cache.lastRefresh),
+      );
+      addTearDown(subscription.cancel);
+      final at = DateTime.utc(2026, 11, 6, 9, 41);
+      for (final (trigger, outcome) in [
+        (RefreshTrigger.startup, RefreshOutcome.updated),
+        (RefreshTrigger.interval, RefreshOutcome.notModified),
+        (RefreshTrigger.resumed, RefreshOutcome.offline),
+        (RefreshTrigger.reconnect, RefreshOutcome.failed),
+        (RefreshTrigger.manual, RefreshOutcome.unauthorized),
+      ]) {
+        client.debug.emit(
+          FlagKitStats(
+            cacheStatus: CacheStatus.fresh,
+            flagCount: 1,
+            anonymousId: 'a',
+            lastRefresh: RefreshRecord(
+              trigger: trigger,
+              startedAt: at,
+              finishedAt: at,
+              outcome: outcome,
+              error: outcome == RefreshOutcome.failed ? 'boom' : null,
+            ),
+          ),
+        );
+      }
+      client.debug.emit(
+        const FlagKitStats(
+          cacheStatus: CacheStatus.empty,
+          flagCount: 0,
+          anonymousId: 'a',
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(seen.map((r) => r?.cause), [...RefreshCause.values, null]);
+      expect(seen.map((r) => r?.kind), [...RefreshKind.values, null]);
+      expect(seen[3]?.error, 'boom');
+      expect(seen.first?.at, at);
+    });
+
     test('watch() fires on any change', () async {
       var fired = 0;
       final subscription = debug.watch().listen((_) => fired++);

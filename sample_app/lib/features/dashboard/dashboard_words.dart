@@ -54,3 +54,44 @@ String reasonWords(ReadingReason reason) => switch (reason) {
   ReadingReason.unknownFlag => 'FlagKit doesn\'t know this flag yet',
   ReadingReason.wrongType => 'the server sends another type',
 };
+
+/// A refresh's result, for the SnackBar.
+String refreshResultWords(RefreshSummary result) => switch (result) {
+  RefreshSummary(kind: RefreshKind.updated, changed: 0, :final skipped) =>
+    'Refreshed: no flag changed.${_skippedWords(skipped)}',
+  RefreshSummary(kind: RefreshKind.updated, :final changed, :final skipped) =>
+    'Refreshed: ${changed == 1 ? '1 flag' : '$changed flags'} changed.'
+        '${_skippedWords(skipped)}',
+  RefreshSummary(kind: RefreshKind.upToDate) =>
+    'Up to date: the server has nothing new.',
+  RefreshSummary(kind: RefreshKind.offline) =>
+    'You\'re offline: the flags stay as they are.',
+  RefreshSummary(kind: RefreshKind.failed, :final reason) =>
+    'The refresh failed (${reason ?? 'unknown'}). The flags stay as they are.',
+  RefreshSummary(kind: RefreshKind.rejected) =>
+    'The server rejected the API key. The flags stay as they are.',
+};
+
+String _skippedWords(int skipped) => switch (skipped) {
+  0 => '',
+  1 => ' 1 invalid flag was left out.',
+  _ => ' $skipped invalid flags were left out.',
+};
+
+/// Why a refresh ran, in words.
+String causeWords(RefreshCause cause) => switch (cause) {
+  RefreshCause.startup => 'At start',
+  RefreshCause.interval => 'Every minute',
+  RefreshCause.resumed => 'Back in the app',
+  RefreshCause.reconnect => 'Back online',
+  RefreshCause.manual => 'Refresh',
+};
+
+/// What a refresh did, in a word or two.
+String kindWords(RefreshKind kind) => switch (kind) {
+  RefreshKind.updated => 'Updated',
+  RefreshKind.upToDate => 'Up to date',
+  RefreshKind.offline => 'Offline',
+  RefreshKind.failed => 'Failed',
+  RefreshKind.rejected => 'Key rejected',
+};

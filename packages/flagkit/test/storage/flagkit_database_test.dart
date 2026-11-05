@@ -24,15 +24,15 @@ void main() {
         updatedAt: testNow,
       );
 
-  test('the current schema version is exported, with both tables', () {
-    final file = File('drift_schemas/flagkit_database/drift_schema_v1.json');
+  test('the current schema version is exported, with every table', () {
+    final file = File('drift_schemas/flagkit_database/drift_schema_v2.json');
     final schema = jsonDecode(file.readAsStringSync()) as Map<String, Object?>;
     final entities = (schema['entities']! as List<Object?>)
         .cast<Map<String, Object?>>()
         .map((e) => (e['data']! as Map<String, Object?>)['name']);
 
-    expect(db.schemaVersion, 1);
-    expect(entities, containsAll(['flags', 'meta']));
+    expect(db.schemaVersion, 2);
+    expect(entities, containsAll(['flags', 'meta', 'refreshes']));
   });
 
   group('the CHECKs refuse a broken row', () {

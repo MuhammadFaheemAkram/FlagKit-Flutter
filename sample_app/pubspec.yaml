@@ -36,3 +36,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # The demo server's starting definitions: the app owns its flags.
+    - assets/remote_config.json

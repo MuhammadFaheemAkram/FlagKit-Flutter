@@ -45,8 +45,47 @@ class FlagKitFlagsDebug implements FlagsDebug {
       flagCount: stats.flagCount,
       installId: stats.anonymousId,
       fetchedAt: stats.fetchedAt,
+      lastRefresh: switch (stats.lastRefresh) {
+        final record? => LastRefresh(
+          cause: switch (record.trigger) {
+            RefreshTrigger.startup => RefreshCause.startup,
+            RefreshTrigger.interval => RefreshCause.interval,
+            RefreshTrigger.resumed => RefreshCause.resumed,
+            RefreshTrigger.reconnect => RefreshCause.reconnect,
+            RefreshTrigger.manual => RefreshCause.manual,
+          },
+          kind: switch (record.outcome) {
+            RefreshOutcome.updated => RefreshKind.updated,
+            RefreshOutcome.notModified => RefreshKind.upToDate,
+            RefreshOutcome.offline => RefreshKind.offline,
+            RefreshOutcome.failed => RefreshKind.failed,
+            RefreshOutcome.unauthorized => RefreshKind.rejected,
+          },
+          at: record.finishedAt,
+          error: record.error,
+        ),
+        null => null,
+      },
     ),
   );
+
+  @override
+  Future<RefreshSummary> refresh() async => switch (await _flags.refresh()) {
+    Updated(:final added, :final changed, :final removed, :final skipped) =>
+      RefreshSummary(
+        RefreshKind.updated,
+        changed: added.length + changed.length + removed.length,
+        skipped: skipped,
+      ),
+    NotModified() => const RefreshSummary(RefreshKind.upToDate),
+    Offline() => const RefreshSummary(RefreshKind.offline),
+    Failed(:final reason) => RefreshSummary(RefreshKind.failed, reason: reason),
+    Unauthorized() => const RefreshSummary(RefreshKind.rejected),
+    NotInitialized() => const RefreshSummary(
+      RefreshKind.failed,
+      reason: 'FlagKit isn\'t running',
+    ),
+  };
 
   FlagReading _reading(FlagDetail detail) => FlagReading(
     key: detail.key,

@@ -92,8 +92,11 @@ final class FakeFlagKitClient implements FlagKitClient {
   @override
   Stream<Set<String>> get changes => _changes.stream;
 
+  /// What [refresh] returns.
+  RefreshResult refreshResult = const NotModified();
+
   @override
-  Future<RefreshResult> refresh() async => const NotModified();
+  Future<RefreshResult> refresh() async => refreshResult;
 
   @override
   Future<void> clearCache() async {}
@@ -117,6 +120,10 @@ final class FakeFlagKitDebug implements FlagKitDebug {
 
   @override
   Stream<FlagKitStats> watchStats() => _stats.stream;
+
+  @override
+  Stream<List<RefreshRecord>> watchRefreshes({int limit = 10}) =>
+      const Stream.empty();
 
   Future<void> close() => _stats.close();
 }

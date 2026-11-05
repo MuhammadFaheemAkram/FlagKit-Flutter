@@ -5,4 +5,6 @@
 /// change only with a new major version.
 library;
 
+export 'package:flagkit/src/connectivity/network_monitor.dart'
+    show FakeNetworkMonitor;
 export 'package:flagkit/src/testing/flagkit_testing.dart' show FlagKitTesting;

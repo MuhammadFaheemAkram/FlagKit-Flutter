@@ -1,30 +1,35 @@
 import 'dart:async';
 
 import 'package:clock/clock.dart';
+import 'package:flagkit/src/cache/cache_policy.dart';
 import 'package:flagkit/src/client/flagkit_client.dart';
 import 'package:flagkit/src/config/flagkit_config.dart';
+import 'package:flagkit/src/connectivity/network_monitor.dart';
 import 'package:flagkit/src/debug/flagkit_debug.dart';
 import 'package:flagkit/src/evaluation/flag_evaluator.dart';
 import 'package:flagkit/src/evaluation/typed_reads.dart';
+import 'package:flagkit/src/model/cache_status.dart';
 import 'package:flagkit/src/model/evaluation_context.dart';
 import 'package:flagkit/src/model/evaluation_reason.dart';
 import 'package:flagkit/src/model/flag_detail.dart';
 import 'package:flagkit/src/model/flag_type.dart';
 import 'package:flagkit/src/model/flag_value.dart';
+import 'package:flagkit/src/model/refresh_record.dart';
 import 'package:flagkit/src/model/refresh_result.dart';
+import 'package:flagkit/src/network/fake_remote_config_server.dart';
+import 'package:flagkit/src/refresh/refresh_manager.dart';
 import 'package:flagkit/src/repository/flag_repository.dart';
 import 'package:flagkit/src/repository/flag_snapshot.dart';
+import 'package:flagkit/src/scheduling/app_lifecycle.dart';
+import 'package:flagkit/src/scheduling/refresh_scheduler.dart';
 import 'package:flagkit/src/storage/flagkit_database.dart';
 import 'package:flagkit/src/util/flagkit_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 
 /// The client behind the interface: it loads the cached definitions once,
-/// at start, and answers every read from them, in memory.
-///
-/// It knows no server yet (0.3.0): the cache is filled by a refresh, so on
-/// a device it stays empty until then, and reads return the callers'
-/// defaults.
+/// at start, answers every read from them in memory, and refreshes them
+/// from the server when they're no longer fresh.
 @internal
 final class FlagKitClientImpl with TypedReads implements FlagKitClient {
   FlagKitClientImpl._({
@@ -33,40 +38,70 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
     required this.database,
     required this.repository,
     required this.debug,
+    required this.refreshes,
+    required this._monitor,
+    required this._ownsMonitor,
+    required this._lifecycle,
+    required this._clock,
   });
 
   /// Opens a client for [config] (already validated): its database, its
-  /// anonymous id and the cached definitions.
+  /// anonymous id and the cached definitions; then starts its refreshes.
   ///
-  /// [database], [logger], [clock] and [newId] are for tests; by default
-  /// the database is the file on the device, the time is now and ids are
-  /// UUID v4s.
+  /// [database], [logger], [clock], [newId] and [lifecycle] are for tests;
+  /// by default the database is the file on the device, the time is now,
+  /// ids are UUID v4s and the lifecycle is Flutter's.
   static Future<FlagKitClientImpl> open(
     FlagKitConfig config, {
     FlagKitDatabase? database,
     FlagKitLogger? logger,
     Clock? clock,
     String Function()? newId,
+    AppLifecycle? lifecycle,
   }) async {
     final log = logger ?? FlagKitLogger(enabled: config.debugMode);
     final ids = newId ?? const Uuid().v4;
+    final time = clock ?? const Clock();
 
-    Future<FlagKitClientImpl> start(FlagKitDatabase database) async =>
-        FlagKitClientImpl._(
-          config: config,
-          logger: log,
+    Future<FlagKitClientImpl> start(FlagKitDatabase database) async {
+      final repository = await FlagRepository.open(
+        database,
+        logger: log,
+        newId: ids,
+      );
+      final ownsMonitor = config.networkMonitor == null;
+      final monitor = config.networkMonitor ?? ConnectivityNetworkMonitor();
+      if (monitor is ConnectivityNetworkMonitor && ownsMonitor) {
+        // Not awaited: until the plugin answers, the monitor says online,
+        // and `initialize` never waits on a platform channel.
+        unawaited(monitor.start());
+      }
+      return FlagKitClientImpl._(
+        config: config,
+        logger: log,
+        database: database,
+        repository: repository,
+        debug: DatabaseDebug(database, config, clock: time),
+        refreshes: RefreshManager(
           database: database,
-          repository: await FlagRepository.open(
-            database,
-            logger: log,
-            newId: ids,
-          ),
-          debug: DatabaseDebug(database, config, clock: clock),
-        );
+          repository: repository,
+          transport: config.transport ?? FakeRemoteConfigServer(),
+          monitor: monitor,
+          apiKey: config.apiKey,
+          logger: log,
+          clock: time,
+        ),
+        monitor: monitor,
+        ownsMonitor: ownsMonitor,
+        lifecycle: lifecycle ?? createAppLifecycle(log.warning),
+        clock: time,
+      );
+    }
 
     final onDisk = database ?? openFlagKitDatabase();
+    FlagKitClientImpl client;
     try {
-      return await start(onDisk);
+      client = await start(onDisk);
     } on Object catch (error, stackTrace) {
       // The file can't be opened (no space, a corrupt file). Failing
       // `initialize` would take the host down with it; instead, this
@@ -83,14 +118,35 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
       } on Object {
         // Already broken; nothing more to release.
       }
-      return start(FlagKitDatabase.inMemory());
+      client = await start(FlagKitDatabase.inMemory());
     }
+    await client._startRefreshing();
+    return client;
   }
 
   final FlagKitConfig config;
   final FlagKitLogger logger;
   final FlagKitDatabase database;
   final FlagRepository repository;
+  final RefreshManager refreshes;
+  final NetworkMonitor _monitor;
+  final bool _ownsMonitor;
+  final AppLifecycle _lifecycle;
+  final Clock _clock;
+  late final RefreshScheduler _scheduler = RefreshScheduler(
+    refresh: _refresh,
+    status: () => cacheStatus,
+    untilStale: () => switch (repository.snapshot.fetchedAt) {
+      final fetchedAt? =>
+        fetchedAt.add(config.refreshInterval).difference(_clock.now().toUtc()),
+      null => Duration.zero,
+    },
+    monitor: _monitor,
+    lifecycle: _lifecycle,
+    interval: config.refreshInterval,
+    paused: () => refreshes.pausedByRejectedKey,
+    logger: logger,
+  );
 
   @override
   final FlagKitDebug debug;
@@ -170,11 +226,69 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
   @override
   Stream<Set<String>> get changes => _changes.stream;
 
+  /// How fresh the cached flags are now.
+  CacheStatus get cacheStatus => cacheStatusOf(
+    fetchedAt: repository.snapshot.fetchedAt,
+    now: _clock.now().toUtc(),
+    refreshInterval: config.refreshInterval,
+    cacheExpiration: config.cacheExpiration,
+  );
+
+  /// The startup refresh, then the scheduler.
+  ///
+  /// A cache that isn't fresh is refreshed at once. With nothing cached at
+  /// all (a first launch), `initialize` waits for that refresh, up to
+  /// `startupWait`, so the first screen can show real values instead of
+  /// defaults; with any cache it never waits: the cached flags are already
+  /// better than defaults, and the refresh lands when it lands.
+  Future<void> _startRefreshing() async {
+    _scheduler.start();
+    if (cacheStatus == CacheStatus.fresh) return;
+    final refreshing = _refresh(RefreshTrigger.startup);
+    if (cacheStatus != CacheStatus.empty ||
+        config.startupWait <= Duration.zero) {
+      unawaited(refreshing);
+      return;
+    }
+    // Whichever comes first: the refresh, or the end of the wait. The
+    // timer is cancelled when the refresh wins, so none is left pending.
+    final done = Completer<void>();
+    final timer = Timer(config.startupWait, () {
+      if (!done.isCompleted) {
+        logger.debug('startup: no flags after ${config.startupWait}, going on');
+        done.complete();
+      }
+    });
+    unawaited(
+      refreshing.whenComplete(() {
+        timer.cancel();
+        if (!done.isCompleted) done.complete();
+      }),
+    );
+    await done.future;
+  }
+
+  Future<RefreshResult>? _refreshing;
+
+  /// One refresh at a time, reporting the values it changed once, however
+  /// many triggers (and `refresh()` calls) joined it.
+  Future<RefreshResult> _refresh(RefreshTrigger trigger) =>
+      _refreshing ??= _refreshAndReport(trigger)
+          .whenComplete(() => _refreshing = null);
+
+  Future<RefreshResult> _refreshAndReport(RefreshTrigger trigger) async {
+    late RefreshResult result;
+    await _changing(() async {
+      result = await refreshes.refresh(trigger);
+      return repository.snapshot;
+    });
+    return result;
+  }
+
   @override
   Future<RefreshResult> refresh() async {
     if (_closed) return const NotInitialized();
-    logger.debug('refresh(): no remote config in this version (0.3.0)');
-    return const Failed(reason: 'no remote config in this version');
+    return _refresh(RefreshTrigger.manual);
   }
 
   @override
@@ -195,6 +309,14 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
   Future<void> shutdown() async {
     if (_closed) return;
     _closed = true;
+    await _scheduler.stop();
+    _lifecycle.dispose();
+    // A refresh in flight finishes first: its transaction mustn't meet a
+    // closed database.
+    await refreshes.close();
+    if (_ownsMonitor && _monitor is ConnectivityNetworkMonitor) {
+      await _monitor.dispose();
+    }
     await _changes.close();
     await database.close();
     logger.debug('shut down');

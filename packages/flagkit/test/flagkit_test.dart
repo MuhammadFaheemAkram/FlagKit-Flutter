@@ -5,7 +5,13 @@ import 'package:flagkit/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const config = FlagKitConfig(apiKey: 'demo_key');
+  // An instant server and a network the test controls: no plugin, no
+  // latency.
+  final config = FlagKitConfig(
+    apiKey: 'demo_key',
+    transport: FakeRemoteConfigServer(latency: Duration.zero),
+    networkMonitor: FakeNetworkMonitor(),
+  );
 
   // A test has no documents directory for the cache file.
   setUp(FlagKitTesting.useInMemoryDatabase);
@@ -57,10 +63,12 @@ void main() {
 
       expect(FlagKit.instance, isA<FlagKitClient>());
       expect(FlagKit.debug, same(FlagKit.instance.debug));
-      expect(
-        (await FlagKit.debug.watchStats().first).cacheStatus,
-        CacheStatus.empty,
+      // The startup refresh (an empty cache isn't fresh) has run.
+      final stats = await FlagKit.debug.watchStats().firstWhere(
+        (stats) => stats.lastRefresh != null,
       );
+      expect(stats.cacheStatus, CacheStatus.fresh);
+      expect(stats.lastRefresh?.trigger, RefreshTrigger.startup);
       expect(
         FlagKit.detail('k').reason,
         EvaluationReason.flagNotFound,

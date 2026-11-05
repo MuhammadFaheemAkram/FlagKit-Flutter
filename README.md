@@ -7,7 +7,7 @@
 
 A small **feature flag and remote configuration SDK for Flutter apps**, and a sample app that integrates it. The goal is the SDK, not an app: a reusable Dart package with typed flag reads that never fail, an offline-first cache, remote refresh, deterministic percentage rollouts and user targeting. It works like a simplified Firebase Remote Config, LaunchDarkly, Statsig or Unleash SDK.
 
-It runs on **Android and iOS**. There is **no API key and no server**: the SDK will talk to a fake remote config server, with a delay, failures and an offline switch.
+It runs on **Android and iOS**. There is **no API key and no server**: the SDK talks to a fake remote config server, with a delay, failures, an offline switch and a console to change flags.
 
 > **Why this repo exists**
 >
@@ -39,8 +39,8 @@ The SDK is built in **strict, reviewable phases**. Each phase ends with:
 |------:|-------|:------:|
 | 1 | SDK foundation: the workspace, the public API's shape, the config and its rules, the sample app's screens on defaults, CI | ✅ Done |
 | 2 | Storage and the cache: drift, the snapshot, the cache policy, the anonymous id, `clearCache`, the first debug stats | ✅ Done |
-| 3 | The remote config pipeline: the fake server, refresh, offline-first reads, the triggers | ⏳ Next |
-| 4 | Rollouts and targeting: stable hashing, the context, rules and the evaluation order | |
+| 3 | The remote config pipeline: the transport and fake server, conditional and validated refreshes, the refresh log, the network monitor, the triggers, `startupWait` | ✅ Done |
+| 4 | Rollouts and targeting: stable hashing, the context, rules and the evaluation order | ⏳ Next |
 | 5 | The debug dashboard and SDK tools: overrides, "try a user", the refresh log | |
 | 6 | Documentation & CI | |
 
@@ -83,9 +83,14 @@ The public API is one library, [`package:flagkit/flagkit.dart`](packages/flagkit
 | `EvaluationContext` | Who is asking: a user id, a country, an app version, custom attributes |
 | `RefreshResult` | What a refresh did: `Updated`, `NotModified`, `Offline`, `Failed`, `Unauthorized`, `NotInitialized` |
 | `CacheStatus` | How fresh the cache is: `fresh`, `stale`, `expired`, `empty` |
-| `FlagKitDebug`, `FlagKitStats` | The debug tools (`FlagKit.debug`): live stats (cache status, flag count, fetched at, config version, anonymous id) |
+| `FlagKitDebug`, `FlagKitStats` | The debug tools (`FlagKit.debug`): live stats (cache status, flag count, fetched at, config version, anonymous id, the last refresh) and the refresh log |
+| `RefreshRecord`, `RefreshTrigger`, `RefreshOutcome` | One refresh in the log: why it ran, what came of it |
+| `RemoteConfigTransport`, `FetchRequest`, `FetchResponse` (`FetchedConfig`, `ConfigNotModified`) | The network boundary: set `FlagKitConfig.transport` to fetch from a real backend |
+| `TransportException` (`ServerUnreachable`, `ServerFailure`, `ApiKeyRejected`) | Why a fetch failed |
+| `FakeRemoteConfigServer`, `FakeServerStats` | The default transport: latency, failures, a key check, conditional fetches, a console |
+| `NetworkMonitor`, `ConnectivityNetworkMonitor` | Online or not: offline, nothing is attempted; pass your own with `FlagKitConfig.networkMonitor` |
 
-A second library, [`package:flagkit/testing.dart`](packages/flagkit/lib/testing.dart), is for an app's tests: `FlagKitTesting.useInMemoryDatabase()`.
+A second library, [`package:flagkit/testing.dart`](packages/flagkit/lib/testing.dart), is for an app's tests: `FlagKitTesting.useInMemoryDatabase()`, `FlagKitTesting.disableTimers()` and `FakeNetworkMonitor`.
 
 Everything else is in `lib/src/`, marked `@internal`, and out of reach.
 
@@ -104,16 +109,23 @@ Everything else is in `lib/src/`, marked `@internal`, and out of reach.
 - **`clearCache()`** forgets the flags (not the install's anonymous id), and `changes` reports every flag whose value changed.
 - **A broken cache file never fails `initialize`:** the session runs in memory, logged.
 
-Nothing fills the cache from a server until 0.3.0, so on a device every read is still the app's default.
+- **Refreshed from a server** (0.3.0):
+  - `refresh()` fetches through the transport, **one at a time**, and returns a `RefreshResult`;
+  - **conditional:** the cached config version is sent, and an unchanged config comes back "not modified", with no body;
+  - **validated in two levels:** a malformed payload changes nothing; an invalid flag is skipped and the rest apply; a flag with rules or a rollout is skipped until 0.4.0 can evaluate them;
+  - **atomic:** the new definitions replace the cache in one transaction, and reads see the old flags or the new, never a mix.
+- **Automatic refreshes,** never while the cache is fresh, offline, or after a rejected key: at `initialize`, when the cache turns stale (in the foreground), when the app comes back, and on reconnect.
+- **`startupWait`:** with nothing cached, `initialize` waits up to this long for the first fetch.
+- **Offline, nothing is attempted,** and the cached flags keep serving reads.
 
 ---
 
 ## ✨ The Sample App
 
-- 🏠 **Home:** the new home (a banner and sections from a JSON flag) or the classic list, as `new_home_screen` says; `feed_page_size` stories. The whole app's **look** follows `home_theme` (classic, modern, ocean).
+- 🏠 **Home:** the new home (a banner and sections from a JSON flag) or the classic list, as `new_home_screen` says; `feed_page_size` stories. The whole app's **look** follows `home_theme` (classic, modern, ocean). The demo server's flags come from [`assets/remote_config.json`](sample_app/assets/remote_config.json).
 - 🛒 **Checkout:** a fixed cart with the discount from `discount_percentage`, in the style `new_checkout` picks: a one-page checkout that asks before paying, or a classic stepper.
 - 👤 **Profile:** the **evaluation context**: sign in as a user id, pick a country and an app version. They go to the SDK at once.
-- 🚩 **Dashboard:** the cache (its status, how many flags, when they were fetched, the install id), and every flag the app reads, with its value, where it came from and why. Refresh, overrides and the server's console arrive with the later phases.
+- 🚩 **Dashboard:** the cache (its status, how many flags, when they were fetched, the last refresh, the install id), **Refresh** (with its result in words), the network and a **Device offline** switch, and every flag the app reads, with its value, where it came from and why. Overrides and the server's console arrive with the later phases.
 - ♿ **Accessible:** dark mode and large text on every screen; never color alone. A test tour checks every screen in light and dark at 200 % text.
 
 **The app never reads a flag by its key.** Its Cubits ask the app's own `AppFlags` port (`flags.newCheckout`, `flags.feedPageSize`); one adapter holds every key and default, and a test checks that the keys appear nowhere else.
@@ -130,7 +142,8 @@ An SDK's dependencies become every host app's dependencies, so **the SDK and the
 | Public models | hand-written immutable and sealed classes; `meta` (`@internal`) | — | 1 |
 | The cache | [`drift`](https://pub.dev/packages/drift) + `drift_flutter` (its own `flagkit.sqlite`, schema v1 exported) | — | 2 |
 | Ids and time | `uuid` (the anonymous id), `clock` (an injected "now") | `intl` (times) | 2 |
-| Network | `connectivity_plus`, behind `NetworkMonitor` | a demo switch | 3 |
+| Network | `connectivity_plus`, behind `NetworkMonitor` | `DemoNetworkMonitor` (the device's network + a demo switch) | 3 |
+| Lifecycle | `AppLifecycleListener` (refresh on resume) | — | 3 |
 | UI | — | [`material_ui`](https://pub.dev/packages/material_ui) (Material 3), `cupertino_ui` | 1 |
 | Navigation | — | `go_router` + `go_router_builder` (typed routes, `StatefulShellRoute`) | 1 |
 | DI | none: a hand-written composition root | `get_it` + `injectable` | 1 |
@@ -153,7 +166,10 @@ View ─▶ Cubit ─▶ AppFlags / UserContext / FlagsDebug  (the app's ports)
                                                                          ▼
                                                      evaluate(key, type) ─▶ FlagSnapshot (in memory) ─▶ FlagDetail (value, source, reason)
                                                                                   ▲ loaded at start, replaced whole
-                                                                  FlagRepository ─▶ drift (flagkit.sqlite: flags, meta)
+                                                                  FlagRepository ─▶ drift (flagkit.sqlite: flags, meta, refreshes)
+                                                                         ▲
+   RefreshScheduler (startup · stale · resumed · reconnect) ─▶ RefreshManager ─▶ RemoteConfigTransport (FakeRemoteConfigServer)
+                                                                  (single-flight, conditional, validated, atomic, logged)
 ```
 
 ```
@@ -162,15 +178,17 @@ FlagKit/                       # the repo root: a pub workspace (one lockfile)
 │   ├── lib/flagkit.dart       # the public API (show lists)
 │   ├── lib/testing.dart       # the second public library, for apps' tests
 │   ├── lib/src/               # everything else (@internal): the facade, client/, config/, model/, evaluation/,
-│   │                          #   repository/, storage/, cache/, debug/, testing/, util/
+│   │                          #   repository/, storage/, cache/, network/, refresh/, scheduling/, connectivity/,
+│   │                          #   debug/, testing/, util/
 │   ├── drift_schemas/         # every schema version, kept to migrate from
 │   ├── example/main.dart      # the snippet pub.dev shows
 │   └── README.md  CHANGELOG.md  LICENSE  build.yaml  dartdoc_options.yaml
 ├── sample_app/                # THE SAMPLE (a normal app)
+│   ├── assets/remote_config.json   # the demo server's flags
 │   └── lib/
 │       ├── app/  core/{common,design_system,navigation}  di/
-│       ├── domain/            # the ports (AppFlags, UserContext, FlagsDebug), HomeConfig, the cart, the feed
-│       ├── data/              # the adapters, AppFlagKeys (the one place keys live)
+│       ├── domain/            # the ports (AppFlags, UserContext, FlagsDebug, DeviceNetwork), HomeConfig, the cart, the feed
+│       ├── data/              # the adapters, AppFlagKeys (the one place keys live), DemoNetworkMonitor
 │       └── features/          # shell, home, checkout, profile, dashboard
 ├── analysis_options.yaml      # one set of rules (the SDK adds its own)
 └── .github/workflows/flutter-ci.yml
@@ -206,14 +224,15 @@ fvm dart format --output=none --set-exit-if-changed .
 (cd packages/flagkit && fvm flutter pub publish --dry-run && fvm dart doc --dry-run)
 ```
 
-**231 tests** after Phase 2:
-- **The SDK (115):** everything from Phase 1, plus:
-  - **storage:** every `CHECK`; save, read, replace (every column, `NULL`s too), `replaceAll`, clear; the exported schema;
-  - **values from JSON:** each type, the one number conversion JSON forces, nothing else; unreadable rows skipped;
-  - **the cache policy** at every boundary; **the evaluator:** not found, wrong type (and the int → double widening), off, on;
-  - **the repository:** the anonymous id (created, kept, kept by clear), flags surviving a restart, replace and clear, a failed write leaving the snapshot;
-  - **the client** on a cached config: reads, off values, a mismatch logged once, `clearCache` and its `changes`, the stats, a broken database falling back to memory.
-- **The sample (116):** everything from Phase 1, plus the Dashboard's cache card (each state in words, the count, the fetch time, the install id) on the real SDK.
+**335 tests** after Phase 3:
+- **The SDK (195):** everything from Phase 2, plus:
+  - **the fake server:** its config, conditional fetches, latency (fake time), reachability, the key check, the failure rate, copies, the console, its stats;
+  - **the parser:** a malformed payload refused whole; every kind of bad flag skipped while the rest apply; rules and rollouts skipped;
+  - **the refresh manager:** the first fetch, not modified, added / changed / removed, skipped, every failure leaving the cache, a rejected key pausing, offline, single-flight, the log and its limit, a database failing mid-refresh;
+  - **the scheduler** in fake time: the timer at the moment the cache turns stale, never at once when stale, resume, reconnect, offline, a rejected key;
+  - **the client:** the startup refresh and `startupWait` (waiting, giving up, never with a cache), `changes` reported once for joined refreshes, reads during a refresh, a restart from a real file, the interval on a whole client in fake time;
+  - the network monitor, the lifecycle, the v1 → v2 migration with real rows.
+- **The sample (140):** everything from Phase 2, plus the demo network monitor, the Dashboard's refresh, network and last refresh, and **the real SDK on the demo server**: a first launch with the server's flags (no default flashed), the server switching a flag off and a refresh bringing it, "Up to date", Device offline, the server failing.
 
 CI runs on every push to `main` and every pull request: the FVM-pinned Flutter; generated code up to date and complete; format and analyze; each package's tests; `pub publish --dry-run` (a warning fails it); `dart doc --dry-run` (a broken doc reference fails it).
 
@@ -235,6 +254,8 @@ CI runs on every push to `main` and every pull request: the FVM-pinned Flutter; 
 | Cache | Room + DataStore | SwiftData + UserDefaults | drift: definitions (value + off value) and meta, in one file |
 | Reads | sync over a cache | sync | synchronous, from an immutable snapshot |
 | Cache statuses | boundaries undefined | the same | half-open boundaries; expired still served |
+| Refresh | full fetch | full fetch | conditional by config version; validated per flag; atomic; single-flight; logged |
+| Auto refresh | WorkManager "if practical" | `BGTaskScheduler` optional | foreground triggers that respect freshness: startup, staleness, resume, reconnect |
 | Why a value | `FlagSource` | `FlagSource` | `FlagSource` + `EvaluationReason`, in a `FlagDetail` |
 | Targeting input | `userId` per read | `userId` per read | an evaluation context, set once |
 | CI | `android-ci.yml` | `ios-ci.yml` | `flutter-ci.yml` (+ `pub publish --dry-run`, `dart doc`) |
@@ -247,6 +268,7 @@ The full table (the cache, rollouts, targeting, refresh) grows with the phases.
 
 - [Phase 1 — SDK Foundation](docs/PHASE_1_SUMMARY.md)
 - [Phase 2 — Storage + Cache Layer](docs/PHASE_2_SUMMARY.md)
+- [Phase 3 — Remote Config Pipeline](docs/PHASE_3_SUMMARY.md)
 - The SDK's own [README](packages/flagkit/README.md) and [CHANGELOG](packages/flagkit/CHANGELOG.md)
 
 ---
