@@ -3,7 +3,7 @@ description: >-
   A small feature flag SDK for Flutter apps: typed synchronous reads, an
   offline-first cache, remote refresh, percentage rollouts and targeting,
   with a fake backend.
-version: 0.5.0
+version: 0.6.0
 repository: https://github.com/MuhammadFaheemAkram/FlagKit-Flutter
 issue_tracker: https://github.com/MuhammadFaheemAkram/FlagKit-Flutter/issues
 topics: [feature-flags, remote-config, sdk, rollout, offline]

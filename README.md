@@ -42,7 +42,29 @@ The SDK is built in **strict, reviewable phases**. Each phase ends with:
 | 3 | The remote config pipeline: the transport and fake server, conditional and validated refreshes, the refresh log, the network monitor, the triggers, `startupWait` | ✅ Done |
 | 4 | Rollouts and targeting: FNV-1a buckets, typed rules, the full evaluation order, re-evaluation on a context change, "Why am I seeing this?" | ✅ Done |
 | 5 | The debug dashboard and SDK tools: local overrides (schema v3), every flag explained, "try a user", the server console, the refresh log and counts | ✅ Done |
-| 6 | Documentation & CI | ⏳ Next |
+| 6 | Documentation & CI: the design docs, screenshots, the open-source files, a release-build launch, a final mutation pass | ✅ Done |
+
+---
+
+## 📦 Installation
+
+The SDK is a Dart package in this repository (not on pub.dev: the name `flagkit` is taken). Depend on it from git, or by path:
+
+```yaml
+dependencies:
+  flagkit:
+    git:
+      url: https://github.com/MuhammadFaheemAkram/FlagKit-Flutter.git
+      path: packages/flagkit
+```
+
+```yaml
+dependencies:
+  flagkit:
+    path: ../FlagKit-Flutter/packages/flagkit
+```
+
+Flutter 3.47 / Dart 3.13 or later, on Android and iOS. The [SDK's README](packages/flagkit/README.md) is the reference for a host app.
 
 ---
 
@@ -131,6 +153,50 @@ Everything else is in `lib/src/`, marked `@internal`, and out of reach.
 
 ---
 
+## 🎯 Rollouts and Targeting
+
+The server sends **definitions**; the device evaluates them for the current user. A flag can carry targeting rules (every one must match) and a percentage rollout:
+
+```json
+{ "key": "new_checkout", "type": "boolean", "value": true, "offValue": false, "enabled": true, "rollout": 25 }
+{ "key": "home_theme", "type": "string", "value": "modern", "offValue": "classic", "enabled": true,
+  "rules": [{ "attribute": "country", "operator": "in", "values": ["PK", "AE"] }] }
+{ "key": "discount_percentage", "type": "double", "value": 15.5, "offValue": 0, "enabled": true,
+  "rules": [{ "attribute": "appVersion", "operator": "semverAtLeast", "values": ["2.0.0"] }] }
+```
+
+Every read runs the same order, and the first step that applies decides:
+
+```
+read(key, type)
+  → a local override?              → the override            (override)
+  → no definition / another type?  → your default            (flagNotFound / typeMismatch)
+  → switched off?                  → the off value           (off)              ← the kill switch wins
+  → rules, not all matching?       → the off value           (targetingMiss)
+  → a rollout:
+       bucket = FNV-1a("key:unit") % 10000, unit = userId ?? the install's anonymous id
+       bucket < rollout × 100      → the value               (rolloutIncluded / targetingMatch)
+       otherwise                   → the off value           (rolloutExcluded)
+  → otherwise                      → the value               (fallthrough / targetingMatch)
+```
+
+- **Rollouts** are deterministic (the same bucket on every device and platform, pinned by FNV-1a's golden vectors), independent per flag, and monotonic: raising 10 % to 25 % keeps everyone who had it. Signed out, a user keeps their answer across launches; signed in, across devices.
+- **Targeting** compares by kind: versions as versions (`2.10.0` after `2.9.0`), numbers as numbers, countries without regard to case. A missing attribute, a malformed version or an unknown operator **never matches**.
+- **`FlagKit.detail(key)`** says which step decided, with the bucket for a rollout; the sample shows it as "Why am I seeing this?".
+
+More: [EVALUATION.md](docs/EVALUATION.md), [ROLLOUTS.md](docs/ROLLOUTS.md), [TARGETING.md](docs/TARGETING.md).
+
+## 📴 Offline
+
+- **Reads never touch the network:** offline, they serve the cached definitions, evaluated for the current user as usual (targeting and rollouts included).
+- **Expired flags are still served.** A cached kill switch stays off for a user offline for days; "expired" only makes the SDK refresh harder.
+- **Nothing is attempted offline;** a refresh that fails changes nothing; reconnecting refreshes if the cache isn't fresh.
+- **A first launch with no cache** can wait a moment for the first fetch (`startupWait`); otherwise reads get the callers' defaults until it lands.
+
+More: [CACHE_POLICY.md](docs/CACHE_POLICY.md).
+
+---
+
 ## ✨ The Sample App
 
 - 🏠 **Home:** the new home (a banner and sections from a JSON flag) or the classic list, as `new_home_screen` says; `feed_page_size` stories. The whole app's **look** follows `home_theme` (classic, modern, ocean), **targeted at Pakistan and the UAE**. The demo server's flags come from [`assets/remote_config.json`](sample_app/assets/remote_config.json).
@@ -147,6 +213,16 @@ Everything else is in `lib/src/`, marked `@internal`, and out of reach.
 - ♿ **Accessible:** dark mode and large text on every screen; never color alone. A test tour checks every screen in light and dark at 200 % text.
 
 **The app never reads a flag by its key.** Its Cubits ask the app's own `AppFlags` port (`flags.newCheckout`, `flags.feedPageSize`); one adapter holds every key and default, and a test checks that the keys appear nowhere else.
+
+---
+
+## 🖼️ Screenshots
+
+| Classic, no country | Modern, PK | A rollout explained | A flag's rules | The server console (dark) |
+|:---:|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/home-classic.png" width="160" alt="Home in the classic look, with 'Why am I seeing this?' open"> | <img src="docs/screenshots/home-modern.png" width="160" alt="Home in the modern look, for a user in Pakistan"> | <img src="docs/screenshots/checkout-rollout.png" width="160" alt="Checkout: you're in its 25 % rollout, bucket 404 of 10,000"> | <img src="docs/screenshots/flag-rules.png" width="160" alt="home_theme's page: country is one of PK, AE, matches you"> | <img src="docs/screenshots/console-dark.png" width="160" alt="The server console in dark mode: switches, a rollout choice, the look"> |
+
+More, with dark mode, offline, an override and large text: [SCREENSHOTS.md](docs/SCREENSHOTS.md).
 
 ---
 
@@ -242,13 +318,19 @@ fvm dart format --output=none --set-exit-if-changed .
 (cd packages/flagkit && fvm flutter pub publish --dry-run && fvm dart doc --dry-run)
 ```
 
-**523 tests** after Phase 5:
+**525 tests: 304 in the SDK, 221 in the sample**, broken down by area in [TESTING.md](docs/TESTING.md). Every phase ran a mutation pass (its key rules broken on purpose, one at a time); the misses became new tests, simpler code, or documented equivalents.
+
+<details>
+<summary>What Phase 5 added</summary>
+
 - **The SDK (304):** everything from Phase 4, plus:
   - **overrides** on a real client: winning over the kill switch, the rules and the rollout; for a flag the server doesn't send; a read of another type; a bad key or type refused; cleared one at a time or all, with `changes`; kept by `clearCache` and across a restart from a real file;
   - **`watchFlags`** (by key; again on a context change that changes no value; after an override and a refresh), **`definitions`**, **`evaluateFor`** (the context unchanged, not counted), **`explain`** (each rule's result);
   - **the stats:** overrides, online (and its changes), refreshing during a refresh, reads by source, counters for refreshes, failures and skipped definitions that outlive the log, no event for a tick that changes nothing;
   - schema v3: the overrides' `CHECK`s, the counters, the v2 → v3 migration with real rows; the models' value equality.
 - **The sample (219):** everything from Phase 4, plus the adapters on the real SDK (inspect, try a user, overrides typed as text, the cache's counts, the log, the server console's adapter and knobs), the new Cubits and views (a flag's page in every state, Try a user, the console, Clear cache's confirmation), and **flows on the real SDK:** the console switches a flag off and Refresh brings it; an override from a flag's page changes Checkout and is cleared; Clear cache → defaults → Refresh; Try a user; deep links to a flag and to a flag that's gone; new accessibility stops for the flag page and Try a user.
+
+</details>
 
 CI runs on every push to `main` and every pull request: the FVM-pinned Flutter; generated code up to date and complete; format and analyze; each package's tests; `pub publish --dry-run` (a warning fails it); `dart doc --dry-run` (a broken doc reference fails it).
 
@@ -267,7 +349,7 @@ CI runs on every push to `main` and every pull request: the FVM-pinned Flutter; 
 | Delivery | a library module | a local Swift Package | a Dart package in a pub workspace |
 | Public API | `object FlagKit` | `enum FlagKit` (static) | `abstract final class FlagKit` + a `FlagKitClient` interface |
 | Values | `String` + a type | the same | a sealed `FlagValue`, parsed once |
-| Cache | Room + DataStore | SwiftData + UserDefaults | drift: definitions (value + off value) and meta, in one file |
+| Cache | Room + DataStore | SwiftData + UserDefaults | drift: definitions (value + off value), meta, the refresh log, overrides; three tested schema versions |
 | Reads | sync over a cache | sync | synchronous, from an immutable snapshot |
 | Cache statuses | boundaries undefined | the same | half-open boundaries; expired still served |
 | Refresh | full fetch | full fetch | conditional by config version; validated per flag; atomic; single-flight; logged |
@@ -279,9 +361,10 @@ CI runs on every push to `main` and every pull request: the FVM-pinned Flutter; 
 | Versions | string compare | string compare | numeric (`2.10.0` > `2.9.0`); malformed never matches |
 | Overrides | — | — | persisted (drift v3), win over everything, source `override`, kept by `clearCache` |
 | Debug tools | a dashboard | a dashboard + a network toggle + a user id | every flag explained (rules, bucket), `evaluateFor` another user, a server console, counters |
+| Network | `NetworkMonitor` (a fake) | `NWPathMonitor` + a fake | `NetworkMonitor` over `connectivity_plus`; the sample wraps it with a Device offline switch |
+| Sample state | ViewModel + StateFlow | `@Observable` | Cubits behind typed ports (`AppFlags`, `FlagsDebug`, `DemoServer`) |
+| Tests | JUnit, Turbine, MockK, Room | Swift Testing | `flutter_test`, `fake_async`, in-memory drift, golden hash vectors, flows on the real SDK, mutation passes |
 | CI | `android-ci.yml` | `ios-ci.yml` | `flutter-ci.yml` (+ `pub publish --dry-run`, `dart doc`) |
-
-The full table (the cache, rollouts, targeting, refresh) grows with the phases.
 
 ---
 
@@ -292,13 +375,23 @@ The full table (the cache, rollouts, targeting, refresh) grows with the phases.
 - [Phase 3 — Remote Config Pipeline](docs/PHASE_3_SUMMARY.md)
 - [Phase 4 — Rollouts + Targeting](docs/PHASE_4_SUMMARY.md)
 - [Phase 5 — Dashboard + SDK Features](docs/PHASE_5_SUMMARY.md)
-- The SDK's own [README](packages/flagkit/README.md) and [CHANGELOG](packages/flagkit/CHANGELOG.md)
+- [Phase 6 — Documentation + CI](docs/PHASE_6_SUMMARY.md)
+
+**The design:**
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md): the layers, the data flow, the sample's ports
+- [SDK_DESIGN.md](docs/SDK_DESIGN.md): the public API and why it's shaped this way
+- [FEATURE_FLAGS.md](docs/FEATURE_FLAGS.md): what flags are for, and what they cost
+- [EVALUATION.md](docs/EVALUATION.md), [ROLLOUTS.md](docs/ROLLOUTS.md), [TARGETING.md](docs/TARGETING.md): how a read is answered
+- [CACHE_POLICY.md](docs/CACHE_POLICY.md): freshness, offline, the refresh triggers
+- [TESTING.md](docs/TESTING.md), [LEARNING_NOTES.md](docs/LEARNING_NOTES.md), [INTERVIEW_NOTES.md](docs/INTERVIEW_NOTES.md), [SCREENSHOTS.md](docs/SCREENSHOTS.md)
+
+**The project:** [CONTRIBUTING](CONTRIBUTING.md), [CHANGELOG](CHANGELOG.md), [SECURITY](SECURITY.md), [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md); the SDK's own [README](packages/flagkit/README.md) and [CHANGELOG](packages/flagkit/CHANGELOG.md).
 
 ---
 
 ## 🗺️ Roadmap
 
-The phases above. Ideas after them (a real HTTP transport, streaming updates, exposure events for experiments, multi-variant flags, fetch / activate) are collected in `docs/ROADMAP.md` in Phase 6.
+All six phases are complete. What could come next (a real HTTP transport, streaming updates, exposure events for experiments, multi-variant flags, fetch / activate, segments, code generation of typed flags) is in [ROADMAP.md](docs/ROADMAP.md).
 
 ---
 

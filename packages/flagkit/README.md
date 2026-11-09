@@ -8,8 +8,28 @@ A small feature flag SDK for Flutter apps, built to show how one is designed:
 
 It talks to a fake remote config server: this is a learning project, not a hosted service.
 
-> **Status: 0.5.0: debug tools.** Definitions come from a `RemoteConfigTransport` (a fake server by default), are cached on the device, and every read evaluates them in memory for the current `EvaluationContext`: a local override first, then the kill switch, targeting rules and a percentage rollout. `FlagKit.debug` shows every flag, explains each one, and answers for another user.
+> **Status: 0.6.0, complete.** Definitions come from a `RemoteConfigTransport` (a fake server by default), are cached on the device, and every read evaluates them in memory for the current `EvaluationContext`: a local override first, then the kill switch, targeting rules and a percentage rollout. `FlagKit.debug` shows every flag, explains each one, and answers for another user.
 > See the [repository](https://github.com/MuhammadFaheemAkram/FlagKit-Flutter) for the plan, the sample app and the design docs.
+
+## Installation
+
+The package isn't on pub.dev (the name is taken). Depend on it from git, or by path in a workspace:
+
+```yaml
+dependencies:
+  flagkit:
+    git:
+      url: https://github.com/MuhammadFaheemAkram/FlagKit-Flutter.git
+      path: packages/flagkit
+```
+
+```yaml
+dependencies:
+  flagkit:
+    path: ../packages/flagkit
+```
+
+It needs Flutter 3.47 / Dart 3.13 or later, on Android and iOS.
 
 ## Usage
 
@@ -37,6 +57,17 @@ FlagKit.setContext(const EvaluationContext(userId: 'user_123', country: 'PK'));
 // Why a flag has its value:
 final detail = FlagKit.detail('new_checkout'); // value, source, reason
 ```
+
+Flag types, and their reads:
+
+| Type (wire) | Read | Value |
+|---|---|---|
+| `boolean` | `isEnabled(key, [false])` | `BoolValue` |
+| `string` | `getString(key, default)` | `StringValue` |
+| `int` | `getInt(key, default)` | `IntValue` |
+| `double` | `getDouble(key, default)` (an `int` flag too) | `DoubleValue` |
+| `json` | `getJson(key, default)` | `JsonValue` (a map, deep-frozen) |
+| any | `getValue(key)`, `detail(key)` | `FlagValue?`, `FlagDetail` |
 
 **With dependency injection,** register `FlagKit.instance` (a `FlagKitClient`) and depend on the interface. Your tests can then pass a fake.
 

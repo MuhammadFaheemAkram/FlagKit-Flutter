@@ -1,3 +1,7 @@
+## 0.6.0
+
+- **Documentation only: no API or behaviour change.** The README is final (installation, the evaluation order, rollouts, targeting, offline behaviour, the debug tools, testing your app), and the repository's `docs/` explain the design: [evaluation](https://github.com/MuhammadFaheemAkram/FlagKit-Flutter/blob/main/docs/EVALUATION.md), [rollouts](https://github.com/MuhammadFaheemAkram/FlagKit-Flutter/blob/main/docs/ROLLOUTS.md), [targeting](https://github.com/MuhammadFaheemAkram/FlagKit-Flutter/blob/main/docs/TARGETING.md), [the cache policy](https://github.com/MuhammadFaheemAkram/FlagKit-Flutter/blob/main/docs/CACHE_POLICY.md).
+
 ## 0.5.0
 
 - **Local overrides** (`FlagKit.debug.setOverride`, `clearOverride`, `clearOverrides`): a value set on this device wins over everything (source and reason `override`), for flags the server sends or not. They're kept across restarts and by `clearCache`, and `changes` reports them. A key that isn't valid, or a value of another type than the flag's, is an `ArgumentError`.
