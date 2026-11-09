@@ -57,6 +57,25 @@ void main() {
       expect(user.current, AppUser.initial);
     });
 
+    test('the install id, from the SDK, once per change', () async {
+      final ids = <String>[];
+      final subscription = user.watchInstallId().listen(ids.add);
+      addTearDown(subscription.cancel);
+
+      for (final (id, count) in [('anon-1', 1), ('anon-1', 2), ('anon-2', 2)]) {
+        client.debug.emit(
+          FlagKitStats(
+            cacheStatus: CacheStatus.fresh,
+            flagCount: count,
+            anonymousId: id,
+          ),
+        );
+      }
+      await pumpEventQueue();
+
+      expect(ids, ['anon-1', 'anon-2']);
+    });
+
     test('watch() gives the user now, then each change', () async {
       final users = <AppUser>[];
       final subscription = user.watch().listen(users.add);

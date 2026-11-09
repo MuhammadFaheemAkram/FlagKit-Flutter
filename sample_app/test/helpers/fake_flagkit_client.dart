@@ -14,6 +14,9 @@ final class FakeFlagKitClient implements FlagKitClient {
   /// server, on for everyone).
   final details = <String, (FlagSource, EvaluationReason)>{};
 
+  /// A rolled-out key's bucket and percentage, as its detail reports them.
+  final rollouts = <String, (int, double)>{};
+
   /// Every context set, in order.
   final contexts = <EvaluationContext>[];
 
@@ -75,7 +78,15 @@ final class FakeFlagKitClient implements FlagKitClient {
     }
     final (source, reason) =
         details[key] ?? (FlagSource.remote, EvaluationReason.fallthrough);
-    return FlagDetail(key: key, value: value, source: source, reason: reason);
+    final rollout = rollouts[key];
+    return FlagDetail(
+      key: key,
+      value: value,
+      source: source,
+      reason: reason,
+      bucket: rollout?.$1,
+      rolloutPercent: rollout?.$2,
+    );
   }
 
   EvaluationContext _context = const EvaluationContext();

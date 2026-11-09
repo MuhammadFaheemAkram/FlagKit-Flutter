@@ -1,3 +1,4 @@
+import 'package:flagkit_sample/domain/flags/flag_reading.dart';
 import 'package:flagkit_sample/domain/flags/home_config.dart';
 
 /// The app's feature flags, by meaning: what the screens may ask.
@@ -25,8 +26,23 @@ abstract interface class AppFlags {
   /// What the new home shows: its banner and sections.
   HomeConfig get homeConfig;
 
+  /// Why [flag] has its value for this user: for the screens' "Why am I
+  /// seeing this?" lines.
+  FlagReading explain(AppFlag flag);
+
   /// Emits whenever one of the flags above changes value.
   Stream<void> watch();
+}
+
+/// The app's flags, by name: what [AppFlags.explain] takes. The keys stay
+/// in the data layer.
+enum AppFlag {
+  newHomeScreen,
+  newCheckout,
+  homeTheme,
+  feedPageSize,
+  discountPercentage,
+  homeConfig,
 }
 
 /// The app's looks, picked by a flag.

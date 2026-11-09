@@ -16,7 +16,9 @@ T _$identity<T>(T value) => value;
 mixin _$HomeState {
 
 /// The new home (banner and sections) or the classic list.
- bool get newHome; HomeConfig get config; List<FeedItem> get items;
+ bool get newHome; HomeConfig get config; List<FeedItem> get items;/// The app's look (Home explains it: it's targeted by country).
+ AppThemeChoice get theme;/// Why this home, and why this look.
+ FlagReading get homeWhy; FlagReading get themeWhy;
 /// Create a copy of HomeState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,20 +30,20 @@ $HomeStateCopyWith<HomeState> get copyWith => _$HomeStateCopyWithImpl<HomeState>
 @override
 bool operator ==(Object other) {
   final _this = this as HomeState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HomeState&&(identical(other.newHome, _this.newHome) || other.newHome == _this.newHome)&&(identical(other.config, _this.config) || other.config == _this.config)&&const DeepCollectionEquality().equals(other.items, _this.items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HomeState&&(identical(other.newHome, _this.newHome) || other.newHome == _this.newHome)&&(identical(other.config, _this.config) || other.config == _this.config)&&const DeepCollectionEquality().equals(other.items, _this.items)&&(identical(other.theme, _this.theme) || other.theme == _this.theme)&&(identical(other.homeWhy, _this.homeWhy) || other.homeWhy == _this.homeWhy)&&(identical(other.themeWhy, _this.themeWhy) || other.themeWhy == _this.themeWhy));
 }
 
 
 @override
 int get hashCode {
   final _this = this as HomeState;
-  return Object.hash(runtimeType,_this.newHome,_this.config,const DeepCollectionEquality().hash(_this.items));
+  return Object.hash(runtimeType,_this.newHome,_this.config,const DeepCollectionEquality().hash(_this.items),_this.theme,_this.homeWhy,_this.themeWhy);
 }
 
 @override
 String toString() {
   final _this = this as HomeState;
-  return 'HomeState(newHome: ${_this.newHome}, config: ${_this.config}, items: ${_this.items})';
+  return 'HomeState(newHome: ${_this.newHome}, config: ${_this.config}, items: ${_this.items}, theme: ${_this.theme}, homeWhy: ${_this.homeWhy}, themeWhy: ${_this.themeWhy})';
 }
 
 
@@ -52,7 +54,7 @@ abstract mixin class $HomeStateCopyWith<$Res>  {
   factory $HomeStateCopyWith(HomeState value, $Res Function(HomeState) _then) = _$HomeStateCopyWithImpl;
 @useResult
 $Res call({
- bool newHome, HomeConfig config, List<FeedItem> items
+ bool newHome, HomeConfig config, List<FeedItem> items, AppThemeChoice theme, FlagReading homeWhy, FlagReading themeWhy
 });
 
 
@@ -69,12 +71,15 @@ class _$HomeStateCopyWithImpl<$Res>
 
 /// Create a copy of HomeState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? newHome = null,Object? config = null,Object? items = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? newHome = null,Object? config = null,Object? items = null,Object? theme = null,Object? homeWhy = null,Object? themeWhy = null,}) {
   return _then(HomeState(
 newHome: null == newHome ? _self.newHome : newHome // ignore: cast_nullable_to_non_nullable
 as bool,config: null == config ? _self.config : config // ignore: cast_nullable_to_non_nullable
 as HomeConfig,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
-as List<FeedItem>,
+as List<FeedItem>,theme: null == theme ? _self.theme : theme // ignore: cast_nullable_to_non_nullable
+as AppThemeChoice,homeWhy: null == homeWhy ? _self.homeWhy : homeWhy // ignore: cast_nullable_to_non_nullable
+as FlagReading,themeWhy: null == themeWhy ? _self.themeWhy : themeWhy // ignore: cast_nullable_to_non_nullable
+as FlagReading,
   ));
 }
 
@@ -159,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool newHome,  HomeConfig config,  List<FeedItem> items)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool newHome,  HomeConfig config,  List<FeedItem> items,  AppThemeChoice theme,  FlagReading homeWhy,  FlagReading themeWhy)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _HomeState() when $default != null:
-return $default(_that.newHome,_that.config,_that.items);case _:
+return $default(_that.newHome,_that.config,_that.items,_that.theme,_that.homeWhy,_that.themeWhy);case _:
   return orElse();
 
 }
@@ -180,10 +185,10 @@ return $default(_that.newHome,_that.config,_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool newHome,  HomeConfig config,  List<FeedItem> items)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool newHome,  HomeConfig config,  List<FeedItem> items,  AppThemeChoice theme,  FlagReading homeWhy,  FlagReading themeWhy)  $default,) {final _that = this;
 switch (_that) {
 case _HomeState():
-return $default(_that.newHome,_that.config,_that.items);case _:
+return $default(_that.newHome,_that.config,_that.items,_that.theme,_that.homeWhy,_that.themeWhy);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -200,10 +205,10 @@ return $default(_that.newHome,_that.config,_that.items);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool newHome,  HomeConfig config,  List<FeedItem> items)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool newHome,  HomeConfig config,  List<FeedItem> items,  AppThemeChoice theme,  FlagReading homeWhy,  FlagReading themeWhy)?  $default,) {final _that = this;
 switch (_that) {
 case _HomeState() when $default != null:
-return $default(_that.newHome,_that.config,_that.items);case _:
+return $default(_that.newHome,_that.config,_that.items,_that.theme,_that.homeWhy,_that.themeWhy);case _:
   return null;
 
 }
@@ -215,7 +220,7 @@ return $default(_that.newHome,_that.config,_that.items);case _:
 
 
 class _HomeState implements HomeState {
-  const _HomeState({required this.newHome, required this.config, required  List<FeedItem> items}): _items = items;
+  const _HomeState({required this.newHome, required this.config, required  List<FeedItem> items, required this.theme, required this.homeWhy, required this.themeWhy}): _items = items;
   
 
 /// The new home (banner and sections) or the classic list.
@@ -228,6 +233,11 @@ class _HomeState implements HomeState {
   return EqualUnmodifiableListView(_items);
 }
 
+/// The app's look (Home explains it: it's targeted by country).
+@override final  AppThemeChoice theme;
+/// Why this home, and why this look.
+@override final  FlagReading homeWhy;
+@override final  FlagReading themeWhy;
 
 /// Create a copy of HomeState
 /// with the given fields replaced by the non-null parameter values.
@@ -239,18 +249,18 @@ _$HomeStateCopyWith<_HomeState> get copyWith => __$HomeStateCopyWithImpl<_HomeSt
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HomeState&&(identical(other.newHome, newHome) || other.newHome == newHome)&&(identical(other.config, config) || other.config == config)&&const DeepCollectionEquality().equals(other.items, _items));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HomeState&&(identical(other.newHome, newHome) || other.newHome == newHome)&&(identical(other.config, config) || other.config == config)&&const DeepCollectionEquality().equals(other.items, _items)&&(identical(other.theme, theme) || other.theme == theme)&&(identical(other.homeWhy, homeWhy) || other.homeWhy == homeWhy)&&(identical(other.themeWhy, themeWhy) || other.themeWhy == themeWhy));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,newHome,config,const DeepCollectionEquality().hash(_items));
+    return Object.hash(runtimeType,newHome,config,const DeepCollectionEquality().hash(_items),theme,homeWhy,themeWhy);
 }
 
 @override
 String toString() {
-    return 'HomeState(newHome: $newHome, config: $config, items: $items)';
+    return 'HomeState(newHome: $newHome, config: $config, items: $items, theme: $theme, homeWhy: $homeWhy, themeWhy: $themeWhy)';
 }
 
 
@@ -261,7 +271,7 @@ abstract mixin class _$HomeStateCopyWith<$Res> implements $HomeStateCopyWith<$Re
   factory _$HomeStateCopyWith(_HomeState value, $Res Function(_HomeState) _then) = __$HomeStateCopyWithImpl;
 @override @useResult
 $Res call({
- bool newHome, HomeConfig config, List<FeedItem> items
+ bool newHome, HomeConfig config, List<FeedItem> items, AppThemeChoice theme, FlagReading homeWhy, FlagReading themeWhy
 });
 
 
@@ -278,12 +288,15 @@ class __$HomeStateCopyWithImpl<$Res>
 
 /// Create a copy of HomeState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? newHome = null,Object? config = null,Object? items = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? newHome = null,Object? config = null,Object? items = null,Object? theme = null,Object? homeWhy = null,Object? themeWhy = null,}) {
   return _then(_HomeState(
 newHome: null == newHome ? _self.newHome : newHome // ignore: cast_nullable_to_non_nullable
 as bool,config: null == config ? _self.config : config // ignore: cast_nullable_to_non_nullable
 as HomeConfig,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
-as List<FeedItem>,
+as List<FeedItem>,theme: null == theme ? _self.theme : theme // ignore: cast_nullable_to_non_nullable
+as AppThemeChoice,homeWhy: null == homeWhy ? _self.homeWhy : homeWhy // ignore: cast_nullable_to_non_nullable
+as FlagReading,themeWhy: null == themeWhy ? _self.themeWhy : themeWhy // ignore: cast_nullable_to_non_nullable
+as FlagReading,
   ));
 }
 

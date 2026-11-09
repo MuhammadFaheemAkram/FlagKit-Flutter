@@ -64,6 +64,37 @@ void main() {
       }
     });
 
+    test('rules and a rollout round-trip', () {
+      final original = definition(
+        'k',
+        rolloutBasisPoints: 2550,
+        rules: [
+          TargetingRule(
+            attribute: 'country',
+            operator: TargetingOperator.isIn,
+            values: const ['PK', 'AE'],
+          ),
+          TargetingRule(
+            attribute: 'email',
+            operator: TargetingOperator.unknown,
+            operatorName: 'matchesRegex',
+            values: const ['.*'],
+          ),
+        ],
+      );
+      final row = original.toRow();
+
+      expect(row.rolloutBp, 2550);
+      expect(row.rules, contains('"operator":"in"'));
+      expect(row.toDefinition(), original);
+      expect(row.toDefinition()!.rules.last.operatorName, 'matchesRegex');
+    });
+
+    test('a row whose rules can\'t be read is no definition', () {
+      final row = definition('k').toRow().copyWith(rules: '{"not":"a list"}');
+      expect(row.toDefinition(), isNull);
+    });
+
     test('a row is written as the wire would carry it', () {
       final row = definition(
         'feed_page_size',

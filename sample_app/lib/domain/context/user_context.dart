@@ -9,6 +9,10 @@ abstract interface class UserContext {
   /// Emits the current user, then each change.
   Stream<AppUser> watch();
 
+  /// This install's anonymous id: who rollouts bucket while no one is
+  /// signed in. Emits it once known.
+  Stream<String> watchInstallId();
+
   /// Signs in as [userId] (trimmed; blank is ignored).
   void signIn(String userId);
 

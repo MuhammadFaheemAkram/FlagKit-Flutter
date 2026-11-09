@@ -27,6 +27,16 @@ import 'package:flagkit/src/util/flagkit_logger.dart';
 import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 
+/// How a first start names its install: a random UUID. Tests replace it
+/// (`FlagKitTesting.useAnonymousId`) to put a rollout's user in a known
+/// bucket.
+@internal
+String Function() newAnonymousId = randomAnonymousId;
+
+/// A random UUID (v4): the default [newAnonymousId].
+@internal
+String randomAnonymousId() => const Uuid().v4();
+
 /// The client behind the interface: it loads the cached definitions once,
 /// at start, answers every read from them in memory, and refreshes them
 /// from the server when they're no longer fresh.
@@ -60,7 +70,7 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
     AppLifecycle? lifecycle,
   }) async {
     final log = logger ?? FlagKitLogger(enabled: config.debugMode);
-    final ids = newId ?? const Uuid().v4;
+    final ids = newId ?? newAnonymousId;
     final time = clock ?? const Clock();
 
     Future<FlagKitClientImpl> start(FlagKitDatabase database) async {
@@ -183,13 +193,25 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
   FlagDetail _evaluate(
     FlagSnapshot snapshot,
     String key,
-    FlagType? requested,
-  ) => evaluateFlag(
-    key: key,
-    definition: snapshot.flags[key],
-    source: snapshot.source,
-    requested: requested,
-  );
+    FlagType? requested, {
+    EvaluationContext? context,
+  }) {
+    final asking = context ?? _context;
+    return evaluateFlag(
+      key: key,
+      definition: snapshot.flags[key],
+      source: snapshot.source,
+      requested: requested,
+      context: asking,
+      unit: _unitOf(asking),
+    );
+  }
+
+  /// Who a rollout buckets: the signed-in user, so they keep their answer
+  /// on every device; else this install, so a guest keeps theirs across
+  /// launches.
+  String _unitOf(EvaluationContext context) =>
+      context.userId ?? repository.anonymousId;
 
   /// Runs [change], then tells [changes] which flags now evaluate to
   /// another value: not which definitions changed, which may change
@@ -204,8 +226,11 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
     if (changed.isNotEmpty && !_changes.isClosed) _changes.add(changed);
   }
 
-  FlagValue? _valueOf(FlagSnapshot snapshot, String key) =>
-      _evaluate(snapshot, key, null).value;
+  FlagValue? _valueOf(
+    FlagSnapshot snapshot,
+    String key, [
+    EvaluationContext? context,
+  ]) => _evaluate(snapshot, key, null, context: context).value;
 
   @override
   EvaluationContext get context => _context;
@@ -217,10 +242,17 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
       return;
     }
     if (context == _context) return;
+    final before = _context;
     _context = context;
     logger.debug('context: $context');
-    // Every flag re-evaluates for the new context. No step looks at the
-    // context yet (targeting is 0.4.0), so no value changes.
+    // Every flag re-evaluates for the new context: signing in moves a user
+    // to their own bucket, a new country may match other rules.
+    final snapshot = repository.snapshot;
+    final changed = {
+      for (final key in snapshot.flags.keys)
+        if (_valueOf(snapshot, key, before) != _valueOf(snapshot, key)) key,
+    };
+    if (changed.isNotEmpty && !_changes.isClosed) _changes.add(changed);
   }
 
   @override

@@ -43,12 +43,16 @@ FlagDefinition definition(
   FlagValue? offValue,
   bool enabled = true,
   DateTime? updatedAt,
+  int? rolloutBasisPoints,
+  List<TargetingRule> rules = const [],
 }) => FlagDefinition(
   key: key,
   value: value,
   offValue: offValue ?? _offFor(value),
   enabled: enabled,
   updatedAt: updatedAt ?? testNow,
+  rolloutBasisPoints: rolloutBasisPoints,
+  rules: rules,
 );
 
 FlagValue _offFor(FlagValue value) => switch (value) {

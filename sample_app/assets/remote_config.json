@@ -1,11 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "flags": [
     { "key": "new_home_screen", "type": "boolean", "value": true, "offValue": false, "enabled": true },
-    { "key": "new_checkout", "type": "boolean", "value": true, "offValue": false, "enabled": false },
-    { "key": "home_theme", "type": "string", "value": "modern", "offValue": "classic", "enabled": true },
+    { "key": "new_checkout", "type": "boolean", "value": true, "offValue": false, "enabled": true, "rollout": 25 },
+    { "key": "home_theme", "type": "string", "value": "modern", "offValue": "classic", "enabled": true,
+      "rules": [{ "attribute": "country", "operator": "in", "values": ["PK", "AE"] }] },
     { "key": "feed_page_size", "type": "int", "value": 12, "offValue": 20, "enabled": true },
-    { "key": "discount_percentage", "type": "double", "value": 15.5, "offValue": 0, "enabled": true },
+    { "key": "discount_percentage", "type": "double", "value": 15.5, "offValue": 0, "enabled": true,
+      "rules": [{ "attribute": "appVersion", "operator": "semverAtLeast", "values": ["2.0.0"] }] },
     { "key": "home_config", "type": "json", "value": { "banner": "Spring sale: 15.5 % off at checkout", "sections": ["deals", "new", "popular"] }, "offValue": { "sections": ["new"] }, "enabled": true }
   ]
 }

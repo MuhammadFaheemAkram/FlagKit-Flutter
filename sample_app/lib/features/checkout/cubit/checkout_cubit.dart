@@ -16,6 +16,8 @@ class CheckoutCubit extends Cubit<CheckoutState> {
           newCheckout: _flags.newCheckout,
           lines: DemoCart.lines,
           totals: CartTotals.of(DemoCart.lines, _flags.discountPercentage),
+          checkoutWhy: _flags.explain(AppFlag.newCheckout),
+          discountWhy: _flags.explain(AppFlag.discountPercentage),
         ),
       ) {
     _subscription = _flags.watch().listen((_) => _readFlags());
@@ -33,6 +35,8 @@ class CheckoutCubit extends Cubit<CheckoutState> {
       state.copyWith(
         newCheckout: newCheckout,
         totals: CartTotals.of(state.lines, _flags.discountPercentage),
+        checkoutWhy: _flags.explain(AppFlag.newCheckout),
+        discountWhy: _flags.explain(AppFlag.discountPercentage),
         // A switch of style starts the order again from its first step.
         step: newCheckout == state.newCheckout ? state.step : 0,
       ),

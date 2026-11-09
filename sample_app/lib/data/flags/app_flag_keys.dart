@@ -1,3 +1,5 @@
+import 'package:flagkit_sample/domain/flags/app_flags.dart';
+
 /// The app's flag keys and their defaults: the one place they're written.
 ///
 /// A default is what the app does when FlagKit has no value (a first
@@ -12,6 +14,16 @@ abstract final class AppFlagKeys {
   static const feedPageSize = 'feed_page_size';
   static const discountPercentage = 'discount_percentage';
   static const homeConfig = 'home_config';
+
+  /// [flag]'s key.
+  static String of(AppFlag flag) => switch (flag) {
+    AppFlag.newHomeScreen => newHomeScreen,
+    AppFlag.newCheckout => newCheckout,
+    AppFlag.homeTheme => homeTheme,
+    AppFlag.feedPageSize => feedPageSize,
+    AppFlag.discountPercentage => discountPercentage,
+    AppFlag.homeConfig => homeConfig,
+  };
 
   /// Every key, in the Dashboard's order.
   static const all = [

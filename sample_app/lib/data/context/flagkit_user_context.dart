@@ -26,6 +26,10 @@ class FlagKitUserContext implements UserContext {
   Stream<AppUser> watch() => startWith(() => _current, _changes.stream);
 
   @override
+  Stream<String> watchInstallId() =>
+      _flags.debug.watchStats().map((stats) => stats.anonymousId).distinct();
+
+  @override
   void signIn(String userId) {
     final id = userId.trim();
     if (id.isEmpty) return;

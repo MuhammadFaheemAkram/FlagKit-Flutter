@@ -160,4 +160,25 @@ void main() {
       await watching.cancel();
     });
   });
+
+  group('FlagKitTesting', () {
+    tearDown(FlagKitTesting.useRandomAnonymousIds);
+
+    Future<String> installId() async {
+      await FlagKit.initialize(config);
+      final id = (await FlagKit.debug.watchStats().first).anonymousId;
+      await FlagKit.shutdown();
+      return id;
+    }
+
+    test('useAnonymousId names new installs; then random again', () async {
+      FlagKitTesting.useAnonymousId('install-1');
+      expect(await installId(), 'install-1');
+
+      FlagKitTesting.useRandomAnonymousIds();
+      final random = await installId();
+      expect(random, isNot('install-1'));
+      expect(random, matches(RegExp(r'^[0-9a-f-]{36}$')));
+    });
+  });
 }

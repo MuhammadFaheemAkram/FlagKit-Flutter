@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import 'package:flagkit/src/connectivity/network_monitor.dart';
 import 'package:flagkit/src/model/refresh_record.dart';
 import 'package:flagkit/src/model/refresh_result.dart';
+import 'package:flagkit/src/model/targeting_rule.dart';
 import 'package:flagkit/src/network/remote_config_transport.dart';
 import 'package:flagkit/src/refresh/config_parser.dart';
 import 'package:flagkit/src/repository/flag_repository.dart';
@@ -151,6 +152,18 @@ final class RefreshManager {
     }
     for (final reason in config.skipped) {
       _logger.warning('skipped a definition: $reason');
+    }
+    // A newer server's operator: kept, so the flag still applies its kill
+    // switch and other rules, but the rule never matches (fail closed).
+    for (final flag in config.flags) {
+      for (final rule in flag.rules) {
+        if (rule.operator == TargetingOperator.unknown) {
+          _logger.warning(
+            '"${flag.key}": unknown operator "${rule.operatorName}" '
+            'never matches',
+          );
+        }
+      }
     }
 
     final old = before.flags;

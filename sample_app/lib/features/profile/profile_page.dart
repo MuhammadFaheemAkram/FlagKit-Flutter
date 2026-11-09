@@ -22,7 +22,8 @@ class ProfileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<ProfileCubit>().state;
+    final state = context.watch<ProfileCubit>().state;
+    final user = state.user;
     final cubit = context.read<ProfileCubit>();
     final theme = Theme.of(context);
     return Scaffold(
@@ -43,6 +44,7 @@ class ProfileView extends StatelessWidget {
             _SignedIn(userId: userId, onSignOut: cubit.signOut)
           else
             _SignInForm(onSignIn: cubit.signIn),
+          _InstallId(state.installId, signedIn: user.isSignedIn),
           const SizedBox(height: AppSpacing.large),
           // The menu's own label names it: no heading above it.
           Padding(
@@ -82,6 +84,25 @@ class ProfileView extends StatelessWidget {
       ),
     );
   }
+}
+
+/// This install's anonymous id, and whether rollouts use it now.
+class _InstallId extends StatelessWidget {
+  const _InstallId(this.id, {required this.signedIn});
+
+  final String? id;
+  final bool signedIn;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    leading: const Icon(Icons.fingerprint),
+    title: const Text('Install id'),
+    subtitle: Text(
+      '${id ?? '…'}\n'
+      '${signedIn ? 'Not used while you\'re signed in.' : 'Rollouts use it now: the same flags at every launch.'}',
+    ),
+    isThreeLine: true,
+  );
 }
 
 class _SignedIn extends StatelessWidget {

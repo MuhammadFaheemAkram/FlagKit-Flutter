@@ -4,6 +4,7 @@ import 'package:flagkit_sample/di/injection.dart';
 import 'package:flagkit_sample/domain/shop/cart.dart';
 import 'package:flagkit_sample/features/checkout/cubit/checkout_cubit.dart';
 import 'package:flagkit_sample/features/checkout/cubit/checkout_state.dart';
+import 'package:flagkit_sample/features/common/why_line.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -44,6 +45,22 @@ class CheckoutView extends StatelessWidget {
   }
 }
 
+/// Why this checkout and this discount.
+WhyLine _whyLine(CheckoutState state) => WhyLine([
+  (
+    subject: state.newCheckout
+        ? 'the one-page checkout'
+        : 'the step-by-step checkout',
+    reading: state.checkoutWhy,
+  ),
+  (
+    subject: state.totals.discountCents > 0
+        ? 'a ${formatPercent(state.totals.discountPercent)} discount'
+        : 'no discount',
+    reading: state.discountWhy,
+  ),
+]);
+
 /// The new checkout: everything on one page, and one button.
 class _OnePageCheckout extends StatelessWidget {
   const _OnePageCheckout(this.state);
@@ -56,6 +73,7 @@ class _OnePageCheckout extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.medium),
       children: [
+        _whyLine(state),
         Card(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xSmall),
@@ -106,7 +124,13 @@ class _ClassicCheckout extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<CheckoutCubit>();
     final last = state.step == CheckoutCubit.stepCount - 1;
+    return ListView(children: [_whyLine(state), _stepper(cubit, last)]);
+  }
+
+  Widget _stepper(CheckoutCubit cubit, bool last) {
     return Stepper(
+      // Inside the page's list: the list scrolls, not the stepper.
+      physics: const NeverScrollableScrollPhysics(),
       currentStep: state.step,
       onStepContinue: last ? cubit.placeOrder : cubit.nextStep,
       onStepCancel: state.step == 0 ? null : cubit.previousStep,

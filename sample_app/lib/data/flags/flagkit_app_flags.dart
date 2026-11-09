@@ -1,6 +1,8 @@
 import 'package:flagkit/flagkit.dart';
 import 'package:flagkit_sample/data/flags/app_flag_keys.dart';
+import 'package:flagkit_sample/data/flags/flag_reading_mapper.dart';
 import 'package:flagkit_sample/domain/flags/app_flags.dart';
+import 'package:flagkit_sample/domain/flags/flag_reading.dart';
 import 'package:flagkit_sample/domain/flags/home_config.dart';
 import 'package:injectable/injectable.dart';
 
@@ -55,6 +57,10 @@ class FlagKitAppFlags implements AppFlags {
   HomeConfig get homeConfig => HomeConfig.fromJson(
     _flags.getJson(AppFlagKeys.homeConfig, AppFlagDefaults.homeConfig),
   );
+
+  @override
+  FlagReading explain(AppFlag flag) =>
+      readingOf(_flags.detail(AppFlagKeys.of(flag)));
 
   // Only the app's own flags: a change to a flag no screen reads
   // rebuilds nothing.

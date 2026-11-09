@@ -20,25 +20,30 @@ void main() {
   Finder chip(String label) =>
       find.descendant(of: find.byType(StatusChip), matching: find.text(label));
 
+  Future<void> pickCountry(WidgetTester tester, String country) async {
+    await tester.tapAndSettle(destination('Profile'));
+    await tester.tapAndSettle(find.byKey(const ValueKey('country')));
+    await tester.tapAndSettle(find.text(country).last);
+  }
+
+  Future<void> openWhy(WidgetTester tester) =>
+      tester.tapAndSettle(find.text('Why am I seeing this?'));
+
   testWidgets('a first launch: the server\'s flags, within startupWait', (
     tester,
   ) async {
     await pumpSample(tester);
 
-    // The new home, its banner and sections, the server's page size and
-    // the modern look: no default flashed first.
+    // The new home, its banner and sections, the server's page size: no
+    // default flashed first. The look is classic: home_theme targets
+    // Pakistan and the UAE, and no country is set yet.
     expect(find.text('Spring sale: 15.5 % off at checkout'), findsOneWidget);
     expect(find.text('Deals'), findsOneWidget);
-    final primary = Theme.of(tester.element(find.text('Deals')))
-        .colorScheme
-        .primary;
-    expect(
-      primary,
-      AppTheme.build(AppThemeSpec.modern, Brightness.light).colorScheme.primary,
-    );
+    expect(primaryOf(tester), primaryFor(AppThemeSpec.classic));
 
     await tester.tapAndSettle(destination('Checkout'));
-    // new_checkout is switched off on the server: the classic checkout.
+    // new_checkout is rolled out to 25 %, and this install's bucket (4486)
+    // is outside it: the classic checkout.
     expect(find.byType(Stepper), findsOneWidget);
 
     tester.view.physicalSize = const Size(390 * 3, 3000 * 3);
@@ -130,4 +135,84 @@ void main() {
       const EvaluationContext(userId: 'alex', appVersion: '2.0.0'),
     );
   });
+
+  group('targeting and rollouts', () {
+    testWidgets('a country the theme targets: the modern look', (tester) async {
+      await pumpSample(tester);
+
+      await pickCountry(tester, 'PK');
+      await tester.tapAndSettle(destination('Home'));
+      expect(primaryOf(tester), primaryFor(AppThemeSpec.modern));
+      await openWhy(tester);
+      expect(
+        find.textContaining(
+          'You see the modern look because the flag\'s targeting rules match '
+          'you.',
+        ),
+        findsOneWidget,
+      );
+
+      await pickCountry(tester, 'GB');
+      await tester.tapAndSettle(destination('Home'));
+      expect(primaryOf(tester), primaryFor(AppThemeSpec.classic));
+    });
+
+    testWidgets('signed out, outside the rollout; signing in moves the '
+        'bucket', (tester) async {
+      await pumpSample(tester, initialLocation: '/checkout');
+      expect(find.byType(Stepper), findsOneWidget);
+      await openWhy(tester);
+      expect(
+        find.textContaining(
+          'You see the step-by-step checkout because you\'re outside its '
+          '25 % rollout (bucket 4486 of 10,000, not below 2500).',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tapAndSettle(destination('Profile'));
+      await tester.enterText(
+        find.byKey(const ValueKey('userId')),
+        userInRollout,
+      );
+      await tester.pump();
+      await tester.tapAndSettle(find.text('Sign in'));
+      await tester.tapAndSettle(destination('Checkout'));
+
+      expect(find.byType(Stepper), findsNothing);
+      expect(find.textContaining('Pay'), findsOneWidget);
+      await openWhy(tester);
+      expect(
+        find.textContaining(
+          'You see the one-page checkout because you\'re in its 25 % rollout '
+          '(bucket 404 of 10,000, below 2500).',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('an app before 2.0.0: no discount', (tester) async {
+      await pumpSample(tester, initialLocation: '/profile');
+
+      await tester.tapAndSettle(find.text('1.9.0'));
+      await tester.tapAndSettle(destination('Checkout'));
+      await tester.tapAndSettle(find.text('Continue'));
+      await tester.tapAndSettle(find.text('Continue'));
+
+      expect(find.textContaining('Discount'), findsNothing);
+      await openWhy(tester);
+      expect(
+        find.textContaining(
+          'You see no discount because the flag targets other users',
+        ),
+        findsOneWidget,
+      );
+    });
+  });
 }
+
+Color primaryOf(WidgetTester tester) =>
+    Theme.of(tester.element(find.byType(Scaffold).first)).colorScheme.primary;
+
+Color primaryFor(AppThemeSpec spec) =>
+    AppTheme.build(spec, Brightness.light).colorScheme.primary;

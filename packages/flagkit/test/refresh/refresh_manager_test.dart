@@ -156,6 +156,30 @@ void main() {
     });
   });
 
+  test('new rules or a new rollout alone is a changed flag', () async {
+    transport.config = wireConfig([wireFlag('a'), wireFlag('b')]);
+    await manager.refresh(RefreshTrigger.startup);
+
+    transport.config = wireConfig(version: 2, [
+      {
+        ...wireFlag('a'),
+        'rules': [
+          {
+            'attribute': 'country',
+            'operator': 'in',
+            'values': ['PK'],
+          },
+        ],
+      },
+      {...wireFlag('b'), 'rollout': 25},
+    ]);
+    final result = await manager.refresh(RefreshTrigger.manual);
+
+    expect(result, const Updated(changed: {'a', 'b'}));
+    expect(repository.snapshot.flags['a']!.rules, hasLength(1));
+    expect(repository.snapshot.flags['b']!.rolloutBasisPoints, 2500);
+  });
+
   test('a cache from an earlier session, confirmed: source remote', () async {
     // Flags cached by an earlier run, loaded as this run's starting point.
     await seedCache(db, [definition('a')], configVersion: 3);
@@ -195,6 +219,29 @@ void main() {
     expect(result, const Updated(added: {'good'}, skipped: 1));
     expect(logs.at(LogLevel.warning).single, contains('bad: an unknown type'));
     expect((await log()).first.skipped, 1);
+  });
+
+  test('an unknown operator is kept, and logged: it never matches', () async {
+    transport.config = wireConfig([
+      {
+        ...wireFlag('beta'),
+        'rules': [
+          {
+            'attribute': 'email',
+            'operator': 'matchesRegex',
+            'values': ['.*'],
+          },
+        ],
+      },
+    ]);
+
+    final result = await manager.refresh(RefreshTrigger.manual);
+
+    expect(result, const Updated(added: {'beta'}));
+    expect(
+      logs.at(LogLevel.warning).single,
+      contains('"beta": unknown operator "matchesRegex"'),
+    );
   });
 
   group('a failure leaves the cache as it was', () {

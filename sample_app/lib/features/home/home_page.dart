@@ -1,6 +1,7 @@
 import 'package:flagkit_sample/core/design_system/design_system.dart';
 import 'package:flagkit_sample/di/injection.dart';
 import 'package:flagkit_sample/domain/feed/feed.dart';
+import 'package:flagkit_sample/features/common/why_line.dart';
 import 'package:flagkit_sample/features/home/cubit/home_cubit.dart';
 import 'package:flagkit_sample/features/home/cubit/home_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -23,23 +24,33 @@ class HomeView extends StatelessWidget {
     final state = context.watch<HomeCubit>().state;
     return Scaffold(
       appBar: AppBar(title: const Text('Home')),
-      body: state.newHome ? _NewHome(state) : _ClassicHome(state.items),
+      body: state.newHome ? _NewHome(state) : _ClassicHome(state),
     );
   }
 }
 
+/// Why this home and this look.
+WhyLine _whyLine(HomeState state) => WhyLine([
+  (
+    subject: state.newHome ? 'the new home' : 'the classic home',
+    reading: state.homeWhy,
+  ),
+  (subject: 'the ${state.theme.name} look', reading: state.themeWhy),
+]);
+
 /// The classic home: the feed as one plain list.
 class _ClassicHome extends StatelessWidget {
-  const _ClassicHome(this.items);
+  const _ClassicHome(this.state);
 
-  final List<FeedItem> items;
+  final HomeState state;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: [
+        _whyLine(state),
         const SectionHeader('Stories'),
-        for (final item in items) _FeedTile(item),
+        for (final item in state.items) _FeedTile(item),
       ],
     );
   }
@@ -58,6 +69,7 @@ class _NewHome extends StatelessWidget {
     return ListView(
       children: [
         if (banner != null) _Banner(banner),
+        _whyLine(state),
         for (final (index, section) in sections.indexed) ...[
           SectionHeader(section.title),
           for (final item in _share(index, sections.length)) _FeedTile(item),

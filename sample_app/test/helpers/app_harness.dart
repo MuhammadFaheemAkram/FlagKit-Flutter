@@ -25,16 +25,26 @@ Future<void> pumpSample(WidgetTester tester, {String? initialLocation}) async {
 /// flags from the asset), instant unless a test turns its knobs.
 late FakeRemoteConfigServer testServer;
 
+/// The install id the app starts with in tests. Its bucket in the demo's
+/// 25 % `new_checkout` rollout is 4486: outside, so a signed-out test user
+/// gets the step-by-step checkout.
+const testInstallId = 'test-install';
+
+/// A user id whose `new_checkout` bucket (404) is inside the rollout.
+const userInRollout = 'maya';
+
 /// The device's network in tests: online, unless a test says otherwise.
 late FakeNetworkMonitor testDevice;
 
 /// What `main()` does before `runApp`: its own `bootstrap()`, with the
 /// SDK's cache in memory (a widget test has no documents directory), no
-/// interval timer (it would outlive the test), an instant server and a
-/// device network the test controls.
+/// interval timer (it would outlive the test), a known install id (a
+/// rollout's answer is then known), an instant server and a device network
+/// the test controls.
 Future<void> startSample() {
   FlagKitTesting.useInMemoryDatabase();
   FlagKitTesting.disableTimers();
+  FlagKitTesting.useAnonymousId(testInstallId);
   return bootstrap(
     beforeStart: () {
       testServer = getIt<FakeRemoteConfigServer>()..latency = Duration.zero;
@@ -54,6 +64,7 @@ Future<void> tearDownSample() async {
   FlagKit.setContext(const EvaluationContext());
   FlagKitTesting.useDeviceDatabase();
   FlagKitTesting.enableTimers();
+  FlagKitTesting.useRandomAnonymousIds();
 }
 
 /// The bottom bar's destination labelled [label] (a tab).

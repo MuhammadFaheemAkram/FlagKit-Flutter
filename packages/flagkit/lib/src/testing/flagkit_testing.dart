@@ -1,3 +1,4 @@
+import 'package:flagkit/src/client/flagkit_client_impl.dart';
 import 'package:flagkit/src/scheduling/refresh_scheduler.dart';
 import 'package:flagkit/src/storage/flagkit_database.dart';
 
@@ -24,4 +25,13 @@ abstract final class FlagKitTesting {
 
   /// The timer again (the default).
   static void enableTimers() => schedulerTimersEnabled = true;
+
+  /// Starts from now name a new install [id] instead of a random UUID: a
+  /// signed-out user lands in a known bucket of every rollout, so a test
+  /// knows which side of it the app is on. An install that already has an
+  /// id keeps it.
+  static void useAnonymousId(String id) => newAnonymousId = () => id;
+
+  /// New installs get random ids again (the default).
+  static void useRandomAnonymousIds() => newAnonymousId = randomAnonymousId;
 }

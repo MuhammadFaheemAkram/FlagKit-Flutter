@@ -107,6 +107,22 @@ void main() {
     expect(log, isNotEmpty);
     expect(await server.watchStats().first, isA<FakeServerStats>());
 
+    // Targeting and rollouts, from the server console.
+    final rule = TargetingRule(
+      attribute: 'country',
+      operator: TargetingOperator.isIn,
+      values: const ['PK', 'AE'],
+    );
+    server
+      ..setRules('new_home_screen', [rule])
+      ..setRollout('new_home_screen', 100);
+    await FlagKit.refresh();
+    final targeted = FlagKit.detail('new_home_screen');
+    expect(targeted.reason, EvaluationReason.targetingMatch);
+    expect(targeted.bucket, isNotNull);
+    expect(targeted.rolloutPercent, 100);
+    expect(describeOperator(rule.operator), isNotEmpty);
+
     // A host can write its own transport and throw the SDK's errors.
     final RemoteConfigTransport custom = _HostTransport();
     final FetchResponse response = await custom.fetch(
@@ -173,6 +189,8 @@ const _exported = [
   'FlagKitClient',
   'FlagKitConfig',
   'EvaluationContext',
+  'TargetingRule',
+  'TargetingOperator',
   'EvaluationReason',
   'FlagDetail',
   'FlagSource',
@@ -265,6 +283,21 @@ String describeOutcome(RefreshOutcome outcome) => switch (outcome) {
   RefreshOutcome.offline => 'offline',
   RefreshOutcome.failed => 'failed',
   RefreshOutcome.unauthorized => 'bad key',
+};
+
+String describeOperator(TargetingOperator operator) => switch (operator) {
+  TargetingOperator.equals => 'is',
+  TargetingOperator.notEquals => 'is not',
+  TargetingOperator.isIn => 'is one of',
+  TargetingOperator.notIn => 'is none of',
+  TargetingOperator.startsWith => 'starts with',
+  TargetingOperator.endsWith => 'ends with',
+  TargetingOperator.contains => 'contains',
+  TargetingOperator.greaterThan => 'is more than',
+  TargetingOperator.lessThan => 'is less than',
+  TargetingOperator.semverAtLeast => 'is at least version',
+  TargetingOperator.semverBelow => 'is below version',
+  TargetingOperator.unknown => 'unknown',
 };
 
 /// Sealed: a host's switch over the errors is exhaustive too.

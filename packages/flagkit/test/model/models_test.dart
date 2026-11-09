@@ -97,6 +97,23 @@ void main() {
         ),
       );
     });
+
+    test('a rollout\'s bucket and percentage are part of the value', () {
+      FlagDetail rolledOut({int bucket = 404, double percent = 25}) =>
+          FlagDetail(
+            key: 'k',
+            value: const BoolValue(true),
+            source: FlagSource.remote,
+            reason: EvaluationReason.rolloutIncluded,
+            bucket: bucket,
+            rolloutPercent: percent,
+          );
+
+      expect(rolledOut(), rolledOut());
+      expect(rolledOut().hashCode, rolledOut().hashCode);
+      expect(rolledOut(), isNot(rolledOut(bucket: 405)));
+      expect(rolledOut(), isNot(rolledOut(percent: 50)));
+    });
   });
 
   group('RefreshResult', () {

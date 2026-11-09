@@ -1,3 +1,4 @@
+import 'package:flagkit_sample/domain/flags/flag_reading.dart';
 import 'package:flagkit_sample/domain/shop/cart.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -11,6 +12,10 @@ abstract class CheckoutState with _$CheckoutState {
     required bool newCheckout,
     required List<CartLine> lines,
     required CartTotals totals,
+
+    /// Why this checkout, and why this discount.
+    required FlagReading checkoutWhy,
+    required FlagReading discountWhy,
 
     /// The classic stepper's step: 0 cart, 1 delivery, 2 payment.
     @Default(0) int step,

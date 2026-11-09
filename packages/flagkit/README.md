@@ -8,7 +8,7 @@ A small feature flag SDK for Flutter apps, built to show how one is designed:
 
 It talks to a fake remote config server: this is a learning project, not a hosted service.
 
-> **Status: 0.3.0: cached, and refreshed from a server.** Definitions come from a `RemoteConfigTransport` (a fake server by default), are cached on the device, and every read evaluates against them in memory. Rules and rollouts arrive in 0.4.0.
+> **Status: 0.4.0: targeting and rollouts.** Definitions come from a `RemoteConfigTransport` (a fake server by default), are cached on the device, and every read evaluates them in memory for the current `EvaluationContext`: the kill switch, then targeting rules, then a percentage rollout. Overrides arrive in 0.5.0.
 > See the [repository](https://github.com/MuhammadFaheemAkram/FlagKit-Flutter) for the plan, the sample app and the design docs.
 
 ## Usage
@@ -87,6 +87,37 @@ class HttpTransport implements RemoteConfigTransport {
 
 The wire format: `{"version": 7, "flags": [{"key": "home_theme", "type": "string", "value": "modern", "offValue": "classic", "enabled": true}]}`. Types: `boolean`, `string`, `int`, `double`, `json`.
 
+## Targeting and rollouts
+
+A flag's definition can carry **rules** and a **rollout**:
+
+```json
+{"key": "new_checkout", "type": "boolean", "value": true, "offValue": false,
+ "rules": [{"attribute": "country", "operator": "in", "values": ["PK", "AE"]}],
+ "rollout": 25}
+```
+
+Every read evaluates, in order:
+
+1. no definition → your default (`flagNotFound`); another type → your default (`typeMismatch`);
+2. switched off → the off value (`off`): **the kill switch beats everything below**;
+3. rules that don't **all** match → the off value (`targetingMiss`);
+4. a rollout → the value for that share of the users still eligible (`targetingMatch` with rules, `rolloutIncluded` without), the off value for the rest (`rolloutExcluded`);
+5. otherwise → the value (`targetingMatch` with rules, `fallthrough` without).
+
+**Rules** look at the `EvaluationContext`: `userId`, `country`, `appVersion`, or any key of `attributes`. Operators: `equals`, `notEquals`, `in`, `notIn`, `startsWith`, `endsWith`, `contains`, `greaterThan`, `lessThan`, `semverAtLeast`, `semverBelow`.
+- **A missing attribute never matches,** not even `notEquals` or `notIn`: a user whose country isn't known isn't "not in Pakistan".
+- Values compare by kind: text as text (country codes without regard to case), numbers as numbers, **versions as versions** (`2.10.0` is after `2.9.0`; a malformed version never matches).
+- An operator this version doesn't know (a newer server's) never matches, and is logged.
+
+**Rollouts** (0–100, in steps of 0.01) put each user in a bucket: FNV-1a (32-bit) of `"key:unit"` over UTF-8, mod 10,000. A user is in when their bucket is below the rollout × 100.
+- **The same on every device and run,** and in any language that implements FNV-1a: no `hashCode`.
+- **Independent per flag:** the key is in the hash, so no one is first in every rollout.
+- **Monotonic:** raising 10 % to 25 % keeps everyone who had it.
+- **The unit** is `context.userId`, else the install's anonymous id. A guest keeps their answer across launches; a signed-in user, across devices. Signing in can change the answer.
+
+`setContext` re-evaluates every flag, and `changes` reports the ones whose value changed. `detail(key)` explains a read: its `reason`, and for a rollout the user's `bucket` and the `rolloutPercent`.
+
 ## Debug tools
 
 ```dart
@@ -115,6 +146,8 @@ setUp(() async {
 });
 tearDown(FlagKit.shutdown);
 ```
+
+With rollouts, a new install's random id puts your test user in a random bucket. `FlagKitTesting.useAnonymousId('test-install')` names it, so the test knows which side of each rollout it's on (`useRandomAnonymousIds()` undoes it).
 
 Or depend on `FlagKitClient` (register `FlagKit.instance`) and pass a fake.
 

@@ -1,4 +1,6 @@
 import 'package:bloc_test/bloc_test.dart';
+import 'package:flagkit_sample/domain/flags/app_flags.dart';
+import 'package:flagkit_sample/domain/flags/flag_reading.dart';
 import 'package:flagkit_sample/domain/shop/cart.dart';
 import 'package:flagkit_sample/features/checkout/checkout_page.dart';
 import 'package:flagkit_sample/features/checkout/cubit/checkout_cubit.dart';
@@ -26,6 +28,21 @@ void main() {
       expect(state.newCheckout, isFalse);
       expect(state.step, 0);
     });
+
+    blocTest<CheckoutCubit, CheckoutState>(
+      'why: read at once, and again when the flags change',
+      build: () => CheckoutCubit(flags),
+      act: (_) {
+        flags
+          ..readings[AppFlag.newCheckout] = inRollout
+          ..readings[AppFlag.discountPercentage] = olderApp
+          ..changed();
+      },
+      verify: (cubit) {
+        expect(cubit.state.checkoutWhy, inRollout);
+        expect(cubit.state.discountWhy, olderApp);
+      },
+    );
 
     blocTest<CheckoutCubit, CheckoutState>(
       'the classic steps go forward and back, within 0–2',
@@ -152,3 +169,19 @@ void main() {
     });
   });
 }
+
+const inRollout = FlagReading(
+  key: 'new_checkout',
+  value: 'true',
+  source: ReadingSource.server,
+  reason: ReadingReason.inRollout,
+  bucket: 404,
+  rolloutPercent: 25,
+);
+
+const olderApp = FlagReading(
+  key: 'discount_percentage',
+  value: '0',
+  source: ReadingSource.server,
+  reason: ReadingReason.rulesMissed,
+);

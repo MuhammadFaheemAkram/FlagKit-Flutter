@@ -24,7 +24,40 @@ void main() {
             await tester.pumpAndSettle();
           },
         ),
+        (
+          'Home, why (the modern look, from Pakistan)',
+          '/profile',
+          (tester) async {
+            await tester.tapAndSettle(find.byKey(const ValueKey('country')));
+            await tester.tapAndSettle(find.text('PK').last);
+            await tester.tapAndSettle(destination('Home'));
+            await tester.tapAndSettle(find.text('Why am I seeing this?'));
+          },
+        ),
         ('Checkout, the cart step', '/checkout', null),
+        (
+          'Checkout, why (outside the rollout)',
+          '/checkout',
+          (tester) async {
+            await tester.tapAndSettle(find.text('Why am I seeing this?'));
+          },
+        ),
+        (
+          'Checkout, the one-page checkout (signed in, in the rollout)',
+          '/checkout',
+          (tester) async {
+            await tester.runAsync(() async {
+              FlagKit.setContext(
+                const EvaluationContext(
+                  userId: userInRollout,
+                  appVersion: '2.1.0',
+                ),
+              );
+            });
+            await tester.pumpAndSettle();
+            await tester.tapAndSettle(find.text('Why am I seeing this?'));
+          },
+        ),
         (
           'Checkout, the payment step',
           '/checkout',

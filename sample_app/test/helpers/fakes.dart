@@ -22,6 +22,19 @@ final class FakeAppFlags implements AppFlags {
   @override
   HomeConfig homeConfig = HomeConfig.fallback;
 
+  /// What [explain] says for each flag; an app default when not set.
+  final readings = <AppFlag, FlagReading>{};
+
+  @override
+  FlagReading explain(AppFlag flag) =>
+      readings[flag] ??
+      FlagReading(
+        key: flag.name,
+        value: '—',
+        source: ReadingSource.appDefault,
+        reason: ReadingReason.unknownFlag,
+      );
+
   final _changes = StreamController<void>.broadcast();
 
   /// Tells the listeners that a value changed.
@@ -39,6 +52,13 @@ final class FakeUserContext implements UserContext {
   AppUser current = AppUser.initial;
 
   final _changes = StreamController<AppUser>.broadcast();
+  final _installIds = StreamController<String>.broadcast();
+
+  /// Sends [id] as the install's anonymous id.
+  void installId(String id) => _installIds.add(id);
+
+  @override
+  Stream<String> watchInstallId() => _installIds.stream;
 
   void _set(AppUser user) {
     current = user;
@@ -79,7 +99,10 @@ final class FakeUserContext implements UserContext {
     ),
   );
 
-  Future<void> close() => _changes.close();
+  Future<void> close() async {
+    await _changes.close();
+    await _installIds.close();
+  }
 }
 
 /// [FlagsDebug] with readings a test sets.

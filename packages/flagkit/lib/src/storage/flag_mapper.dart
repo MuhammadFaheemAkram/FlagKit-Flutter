@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flagkit/src/model/flag_type.dart';
 import 'package:flagkit/src/model/flag_value_codec.dart';
+import 'package:flagkit/src/model/targeting_rule_codec.dart';
 import 'package:flagkit/src/repository/flag_definition.dart';
 import 'package:flagkit/src/storage/flagkit_database.dart';
 import 'package:meta/meta.dart';
@@ -17,13 +18,16 @@ extension FlagRowMapper on FlagRow {
     try {
       final value = flagValueFromJson(flagType, jsonDecode(this.value));
       final off = flagValueFromJson(flagType, jsonDecode(offValue));
-      if (value == null || off == null) return null;
+      final rules = rulesFromJson(jsonDecode(this.rules));
+      if (value == null || off == null || rules == null) return null;
       return FlagDefinition(
         key: key,
         value: value,
         offValue: off,
         enabled: enabled,
         updatedAt: updatedAt.toUtc(),
+        rolloutBasisPoints: rolloutBp,
+        rules: rules,
       );
     } on FormatException {
       return null;
@@ -40,7 +44,8 @@ extension FlagDefinitionMapper on FlagDefinition {
     value: jsonEncode(value.toJson()),
     offValue: jsonEncode(offValue.toJson()),
     enabled: enabled,
-    rules: '[]',
+    rolloutBp: rolloutBasisPoints,
+    rules: jsonEncode([for (final rule in rules) rule.toJson()]),
     updatedAt: updatedAt.toUtc(),
   );
 }

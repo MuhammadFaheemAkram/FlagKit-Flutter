@@ -121,6 +121,35 @@ void main() {
       expect(s.version, 8);
     });
 
+    test('rollouts and rules: set, then removed', () async {
+      final s = server()
+        ..setRollout('new_home_screen', 25)
+        ..setRules('new_home_screen', [
+          TargetingRule(
+            attribute: 'country',
+            operator: TargetingOperator.isIn,
+            values: const ['PK'],
+          ),
+        ]);
+
+      expect(s.version, 9);
+      expect(s.flags.single['rollout'], 25);
+      expect(s.flags.single['rules'], [
+        {
+          'attribute': 'country',
+          'operator': 'in',
+          'values': ['PK'],
+        },
+      ]);
+
+      s
+        ..setRollout('new_home_screen', null)
+        ..setRules('new_home_screen', const []);
+      expect(s.flags.single.containsKey('rollout'), isFalse);
+      expect(s.flags.single.containsKey('rules'), isFalse);
+      expect(s.version, 11);
+    });
+
     test('editing a flag it hasn\'t is a mistake', () {
       expect(() => server().setValue('nope', 1), throwsArgumentError);
     });

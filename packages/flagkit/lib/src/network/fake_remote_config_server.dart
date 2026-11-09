@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flagkit/src/model/targeting_rule.dart';
 import 'package:flagkit/src/network/remote_config_transport.dart';
 import 'package:flagkit/src/util/start_with.dart';
 import 'package:flutter/foundation.dart';
@@ -130,6 +131,19 @@ class FakeRemoteConfigServer implements RemoteConfigTransport {
   /// Switches the flag [key] on or off (its kill switch).
   void setEnabled(String key, bool enabled) => _edit(key, 'enabled', enabled);
 
+  /// Rolls the flag [key] out to [percent] of its eligible users (0–100,
+  /// in steps of 0.01); `null` removes the rollout: everyone eligible.
+  void setRollout(String key, double? percent) =>
+      _edit(key, 'rollout', percent);
+
+  /// Targets the flag [key] at the users matching every one of [rules];
+  /// an empty list removes the targeting: everyone.
+  void setRules(String key, List<TargetingRule> rules) => _edit(
+    key,
+    'rules',
+    rules.isEmpty ? null : [for (final rule in rules) rule.toJson()],
+  );
+
   /// Deletes the flag [key].
   void removeFlag(String key) {
     final before = _flags.length;
@@ -140,7 +154,11 @@ class FakeRemoteConfigServer implements RemoteConfigTransport {
   void _edit(String key, String field, Object? value) {
     final flag = _flags.where((f) => f['key'] == key).firstOrNull;
     if (flag == null) throw ArgumentError.value(key, 'key', 'no such flag');
-    flag[field] = value;
+    if (value == null && field != 'value') {
+      flag.remove(field);
+    } else {
+      flag[field] = value;
+    }
     _changed();
   }
 

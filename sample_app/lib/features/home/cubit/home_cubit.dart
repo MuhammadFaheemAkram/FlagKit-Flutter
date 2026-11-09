@@ -21,6 +21,9 @@ class HomeCubit extends Cubit<HomeState> {
     newHome: flags.newHomeScreen,
     config: flags.homeConfig,
     items: FeedCatalog.items(flags.feedPageSize),
+    theme: flags.homeTheme,
+    homeWhy: flags.explain(AppFlag.newHomeScreen),
+    themeWhy: flags.explain(AppFlag.homeTheme),
   );
 
   @override

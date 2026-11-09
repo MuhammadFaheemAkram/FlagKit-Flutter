@@ -16,7 +16,8 @@ T _$identity<T>(T value) => value;
 mixin _$CheckoutState {
 
 /// The one-page checkout, or the classic stepper.
- bool get newCheckout; List<CartLine> get lines; CartTotals get totals;/// The classic stepper's step: 0 cart, 1 delivery, 2 payment.
+ bool get newCheckout; List<CartLine> get lines; CartTotals get totals;/// Why this checkout, and why this discount.
+ FlagReading get checkoutWhy; FlagReading get discountWhy;/// The classic stepper's step: 0 cart, 1 delivery, 2 payment.
  int get step;/// How many orders were placed: a change shows the confirmation once.
  int get ordersPlaced;
 /// Create a copy of CheckoutState
@@ -30,20 +31,20 @@ $CheckoutStateCopyWith<CheckoutState> get copyWith => _$CheckoutStateCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as CheckoutState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CheckoutState&&(identical(other.newCheckout, _this.newCheckout) || other.newCheckout == _this.newCheckout)&&const DeepCollectionEquality().equals(other.lines, _this.lines)&&(identical(other.totals, _this.totals) || other.totals == _this.totals)&&(identical(other.step, _this.step) || other.step == _this.step)&&(identical(other.ordersPlaced, _this.ordersPlaced) || other.ordersPlaced == _this.ordersPlaced));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CheckoutState&&(identical(other.newCheckout, _this.newCheckout) || other.newCheckout == _this.newCheckout)&&const DeepCollectionEquality().equals(other.lines, _this.lines)&&(identical(other.totals, _this.totals) || other.totals == _this.totals)&&(identical(other.checkoutWhy, _this.checkoutWhy) || other.checkoutWhy == _this.checkoutWhy)&&(identical(other.discountWhy, _this.discountWhy) || other.discountWhy == _this.discountWhy)&&(identical(other.step, _this.step) || other.step == _this.step)&&(identical(other.ordersPlaced, _this.ordersPlaced) || other.ordersPlaced == _this.ordersPlaced));
 }
 
 
 @override
 int get hashCode {
   final _this = this as CheckoutState;
-  return Object.hash(runtimeType,_this.newCheckout,const DeepCollectionEquality().hash(_this.lines),_this.totals,_this.step,_this.ordersPlaced);
+  return Object.hash(runtimeType,_this.newCheckout,const DeepCollectionEquality().hash(_this.lines),_this.totals,_this.checkoutWhy,_this.discountWhy,_this.step,_this.ordersPlaced);
 }
 
 @override
 String toString() {
   final _this = this as CheckoutState;
-  return 'CheckoutState(newCheckout: ${_this.newCheckout}, lines: ${_this.lines}, totals: ${_this.totals}, step: ${_this.step}, ordersPlaced: ${_this.ordersPlaced})';
+  return 'CheckoutState(newCheckout: ${_this.newCheckout}, lines: ${_this.lines}, totals: ${_this.totals}, checkoutWhy: ${_this.checkoutWhy}, discountWhy: ${_this.discountWhy}, step: ${_this.step}, ordersPlaced: ${_this.ordersPlaced})';
 }
 
 
@@ -54,7 +55,7 @@ abstract mixin class $CheckoutStateCopyWith<$Res>  {
   factory $CheckoutStateCopyWith(CheckoutState value, $Res Function(CheckoutState) _then) = _$CheckoutStateCopyWithImpl;
 @useResult
 $Res call({
- bool newCheckout, List<CartLine> lines, CartTotals totals, int step, int ordersPlaced
+ bool newCheckout, List<CartLine> lines, CartTotals totals, FlagReading checkoutWhy, FlagReading discountWhy, int step, int ordersPlaced
 });
 
 
@@ -71,12 +72,14 @@ class _$CheckoutStateCopyWithImpl<$Res>
 
 /// Create a copy of CheckoutState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? newCheckout = null,Object? lines = null,Object? totals = null,Object? step = null,Object? ordersPlaced = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? newCheckout = null,Object? lines = null,Object? totals = null,Object? checkoutWhy = null,Object? discountWhy = null,Object? step = null,Object? ordersPlaced = null,}) {
   return _then(CheckoutState(
 newCheckout: null == newCheckout ? _self.newCheckout : newCheckout // ignore: cast_nullable_to_non_nullable
 as bool,lines: null == lines ? _self.lines : lines // ignore: cast_nullable_to_non_nullable
 as List<CartLine>,totals: null == totals ? _self.totals : totals // ignore: cast_nullable_to_non_nullable
-as CartTotals,step: null == step ? _self.step : step // ignore: cast_nullable_to_non_nullable
+as CartTotals,checkoutWhy: null == checkoutWhy ? _self.checkoutWhy : checkoutWhy // ignore: cast_nullable_to_non_nullable
+as FlagReading,discountWhy: null == discountWhy ? _self.discountWhy : discountWhy // ignore: cast_nullable_to_non_nullable
+as FlagReading,step: null == step ? _self.step : step // ignore: cast_nullable_to_non_nullable
 as int,ordersPlaced: null == ordersPlaced ? _self.ordersPlaced : ordersPlaced // ignore: cast_nullable_to_non_nullable
 as int,
   ));
@@ -163,10 +166,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool newCheckout,  List<CartLine> lines,  CartTotals totals,  int step,  int ordersPlaced)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool newCheckout,  List<CartLine> lines,  CartTotals totals,  FlagReading checkoutWhy,  FlagReading discountWhy,  int step,  int ordersPlaced)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CheckoutState() when $default != null:
-return $default(_that.newCheckout,_that.lines,_that.totals,_that.step,_that.ordersPlaced);case _:
+return $default(_that.newCheckout,_that.lines,_that.totals,_that.checkoutWhy,_that.discountWhy,_that.step,_that.ordersPlaced);case _:
   return orElse();
 
 }
@@ -184,10 +187,10 @@ return $default(_that.newCheckout,_that.lines,_that.totals,_that.step,_that.orde
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool newCheckout,  List<CartLine> lines,  CartTotals totals,  int step,  int ordersPlaced)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool newCheckout,  List<CartLine> lines,  CartTotals totals,  FlagReading checkoutWhy,  FlagReading discountWhy,  int step,  int ordersPlaced)  $default,) {final _that = this;
 switch (_that) {
 case _CheckoutState():
-return $default(_that.newCheckout,_that.lines,_that.totals,_that.step,_that.ordersPlaced);case _:
+return $default(_that.newCheckout,_that.lines,_that.totals,_that.checkoutWhy,_that.discountWhy,_that.step,_that.ordersPlaced);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -204,10 +207,10 @@ return $default(_that.newCheckout,_that.lines,_that.totals,_that.step,_that.orde
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool newCheckout,  List<CartLine> lines,  CartTotals totals,  int step,  int ordersPlaced)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool newCheckout,  List<CartLine> lines,  CartTotals totals,  FlagReading checkoutWhy,  FlagReading discountWhy,  int step,  int ordersPlaced)?  $default,) {final _that = this;
 switch (_that) {
 case _CheckoutState() when $default != null:
-return $default(_that.newCheckout,_that.lines,_that.totals,_that.step,_that.ordersPlaced);case _:
+return $default(_that.newCheckout,_that.lines,_that.totals,_that.checkoutWhy,_that.discountWhy,_that.step,_that.ordersPlaced);case _:
   return null;
 
 }
@@ -219,7 +222,7 @@ return $default(_that.newCheckout,_that.lines,_that.totals,_that.step,_that.orde
 
 
 class _CheckoutState implements CheckoutState {
-  const _CheckoutState({required this.newCheckout, required  List<CartLine> lines, required this.totals, this.step = 0, this.ordersPlaced = 0}): _lines = lines;
+  const _CheckoutState({required this.newCheckout, required  List<CartLine> lines, required this.totals, required this.checkoutWhy, required this.discountWhy, this.step = 0, this.ordersPlaced = 0}): _lines = lines;
   
 
 /// The one-page checkout, or the classic stepper.
@@ -232,6 +235,9 @@ class _CheckoutState implements CheckoutState {
 }
 
 @override final  CartTotals totals;
+/// Why this checkout, and why this discount.
+@override final  FlagReading checkoutWhy;
+@override final  FlagReading discountWhy;
 /// The classic stepper's step: 0 cart, 1 delivery, 2 payment.
 @override@JsonKey() final  int step;
 /// How many orders were placed: a change shows the confirmation once.
@@ -247,18 +253,18 @@ _$CheckoutStateCopyWith<_CheckoutState> get copyWith => __$CheckoutStateCopyWith
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CheckoutState&&(identical(other.newCheckout, newCheckout) || other.newCheckout == newCheckout)&&const DeepCollectionEquality().equals(other.lines, _lines)&&(identical(other.totals, totals) || other.totals == totals)&&(identical(other.step, step) || other.step == step)&&(identical(other.ordersPlaced, ordersPlaced) || other.ordersPlaced == ordersPlaced));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CheckoutState&&(identical(other.newCheckout, newCheckout) || other.newCheckout == newCheckout)&&const DeepCollectionEquality().equals(other.lines, _lines)&&(identical(other.totals, totals) || other.totals == totals)&&(identical(other.checkoutWhy, checkoutWhy) || other.checkoutWhy == checkoutWhy)&&(identical(other.discountWhy, discountWhy) || other.discountWhy == discountWhy)&&(identical(other.step, step) || other.step == step)&&(identical(other.ordersPlaced, ordersPlaced) || other.ordersPlaced == ordersPlaced));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,newCheckout,const DeepCollectionEquality().hash(_lines),totals,step,ordersPlaced);
+    return Object.hash(runtimeType,newCheckout,const DeepCollectionEquality().hash(_lines),totals,checkoutWhy,discountWhy,step,ordersPlaced);
 }
 
 @override
 String toString() {
-    return 'CheckoutState(newCheckout: $newCheckout, lines: $lines, totals: $totals, step: $step, ordersPlaced: $ordersPlaced)';
+    return 'CheckoutState(newCheckout: $newCheckout, lines: $lines, totals: $totals, checkoutWhy: $checkoutWhy, discountWhy: $discountWhy, step: $step, ordersPlaced: $ordersPlaced)';
 }
 
 
@@ -269,7 +275,7 @@ abstract mixin class _$CheckoutStateCopyWith<$Res> implements $CheckoutStateCopy
   factory _$CheckoutStateCopyWith(_CheckoutState value, $Res Function(_CheckoutState) _then) = __$CheckoutStateCopyWithImpl;
 @override @useResult
 $Res call({
- bool newCheckout, List<CartLine> lines, CartTotals totals, int step, int ordersPlaced
+ bool newCheckout, List<CartLine> lines, CartTotals totals, FlagReading checkoutWhy, FlagReading discountWhy, int step, int ordersPlaced
 });
 
 
@@ -286,12 +292,14 @@ class __$CheckoutStateCopyWithImpl<$Res>
 
 /// Create a copy of CheckoutState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? newCheckout = null,Object? lines = null,Object? totals = null,Object? step = null,Object? ordersPlaced = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? newCheckout = null,Object? lines = null,Object? totals = null,Object? checkoutWhy = null,Object? discountWhy = null,Object? step = null,Object? ordersPlaced = null,}) {
   return _then(_CheckoutState(
 newCheckout: null == newCheckout ? _self.newCheckout : newCheckout // ignore: cast_nullable_to_non_nullable
 as bool,lines: null == lines ? _self._lines : lines // ignore: cast_nullable_to_non_nullable
 as List<CartLine>,totals: null == totals ? _self.totals : totals // ignore: cast_nullable_to_non_nullable
-as CartTotals,step: null == step ? _self.step : step // ignore: cast_nullable_to_non_nullable
+as CartTotals,checkoutWhy: null == checkoutWhy ? _self.checkoutWhy : checkoutWhy // ignore: cast_nullable_to_non_nullable
+as FlagReading,discountWhy: null == discountWhy ? _self.discountWhy : discountWhy // ignore: cast_nullable_to_non_nullable
+as FlagReading,step: null == step ? _self.step : step // ignore: cast_nullable_to_non_nullable
 as int,ordersPlaced: null == ordersPlaced ? _self.ordersPlaced : ordersPlaced // ignore: cast_nullable_to_non_nullable
 as int,
   ));

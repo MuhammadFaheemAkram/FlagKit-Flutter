@@ -1,6 +1,7 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flagkit_sample/domain/context/user_context.dart';
 import 'package:flagkit_sample/features/profile/cubit/profile_cubit.dart';
+import 'package:flagkit_sample/features/profile/cubit/profile_state.dart';
 import 'package:flagkit_sample/features/profile/profile_page.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,10 +18,22 @@ void main() {
 
   group('ProfileCubit', () {
     test('starts from the current user', () {
-      expect(ProfileCubit(user).state, AppUser.initial);
+      expect(
+        ProfileCubit(user).state,
+        const ProfileState(user: AppUser.initial),
+      );
     });
 
-    blocTest<ProfileCubit, AppUser>(
+    blocTest<ProfileCubit, ProfileState>(
+      'the install id, once known',
+      build: () => ProfileCubit(user),
+      act: (_) => user.installId('install-1'),
+      expect: () => const [
+        ProfileState(user: AppUser.initial, installId: 'install-1'),
+      ],
+    );
+
+    blocTest<ProfileCubit, ProfileState>(
       'every change goes to the context, and comes back as state',
       build: () => ProfileCubit(user),
       act: (cubit) => cubit
@@ -29,10 +42,18 @@ void main() {
         ..setAppVersion('1.9.0')
         ..signOut(),
       expect: () => const [
-        AppUser(userId: 'alex', appVersion: '2.1.0'),
-        AppUser(userId: 'alex', country: 'PK', appVersion: '2.1.0'),
-        AppUser(userId: 'alex', country: 'PK', appVersion: '1.9.0'),
-        AppUser(country: 'PK', appVersion: '1.9.0'),
+        ProfileState(
+          user: AppUser(userId: 'alex', appVersion: '2.1.0'),
+        ),
+        ProfileState(
+          user: AppUser(userId: 'alex', country: 'PK', appVersion: '2.1.0'),
+        ),
+        ProfileState(
+          user: AppUser(userId: 'alex', country: 'PK', appVersion: '1.9.0'),
+        ),
+        ProfileState(
+          user: AppUser(country: 'PK', appVersion: '1.9.0'),
+        ),
       ],
     );
   });
@@ -65,6 +86,20 @@ void main() {
       expect(user.current.userId, 'alex');
       expect(find.text('alex'), findsOneWidget);
       expect(find.text('Sign out'), findsOneWidget);
+    });
+
+    testWidgets('the install id, and whether rollouts use it', (tester) async {
+      await pump(tester);
+      user.installId('install-1');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('install-1'), findsOneWidget);
+      expect(find.textContaining('Rollouts use it now'), findsOneWidget);
+
+      user.signIn('alex');
+      // The context's event, then the rebuild.
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Not used while'), findsOneWidget);
     });
 
     testWidgets('signed in: Sign out', (tester) async {

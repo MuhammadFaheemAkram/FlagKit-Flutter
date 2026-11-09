@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flagkit/flagkit.dart';
 import 'package:flagkit/src/client/flagkit_client_impl.dart';
+import 'package:flagkit/src/evaluation/rollout.dart';
 import 'package:flagkit/src/storage/flagkit_database.dart';
 import 'package:flagkit/src/util/flagkit_logger.dart';
 import 'package:flagkit/testing.dart';
@@ -241,6 +242,80 @@ void _client() {
         logs.at(LogLevel.debug).where((line) => line.startsWith('context:')),
         hasLength(1),
       );
+    });
+  });
+
+  group('targeting and rollouts', () {
+    final inPakistan = TargetingRule(
+      attribute: 'country',
+      operator: TargetingOperator.isIn,
+      values: const ['PK', 'AE'],
+    );
+    // Units on each side of a 50 % rollout of 'new_checkout', found rather
+    // than hard-coded: the test says what it needs, not what FNV gives.
+    final units = [for (var i = 0; i < 100; i++) 'user_$i'];
+    final inside = units.firstWhere((u) => bucketOf('new_checkout', u) < 5000);
+    final outside = units.firstWhere(
+      (u) => bucketOf('new_checkout', u) >= 5000,
+    );
+
+    setUp(() async {
+      await seedCache(db, [
+        definition(
+          'home_theme',
+          value: const StringValue('modern'),
+          offValue: const StringValue('classic'),
+          rules: [inPakistan],
+        ),
+        definition('new_checkout', rolloutBasisPoints: 5000),
+        definition('feed_page_size', value: const IntValue(30)),
+      ]);
+      await start(config: offline());
+    });
+
+    test('a read uses the context', () {
+      expect(client.getString('home_theme', 'x'), 'classic');
+      client.setContext(const EvaluationContext(country: 'PK'));
+      expect(client.getString('home_theme', 'x'), 'modern');
+      expect(
+        client.detail('home_theme').reason,
+        EvaluationReason.targetingMatch,
+      );
+    });
+
+    test('a guest is bucketed by the install\'s anonymous id', () async {
+      final stats = await client.debug.watchStats().first;
+      final detail = client.detail('new_checkout');
+
+      expect(detail.bucket, bucketOf('new_checkout', stats.anonymousId));
+      expect(detail.rolloutPercent, 50);
+    });
+
+    test('a signed-in user by their id: the same on every device', () {
+      client.setContext(EvaluationContext(userId: inside));
+      final detail = client.detail('new_checkout');
+
+      expect(detail.bucket, bucketOf('new_checkout', inside));
+      expect(detail.reason, EvaluationReason.rolloutIncluded);
+      expect(client.isEnabled('new_checkout'), isTrue);
+    });
+
+    test('a new context re-evaluates: changes names what changed', () async {
+      client.setContext(EvaluationContext(userId: outside, country: 'GB'));
+      final changes = <Set<String>>[];
+      final subscription = client.changes.listen(changes.add);
+      addTearDown(subscription.cancel);
+
+      client.setContext(EvaluationContext(userId: inside, country: 'PK'));
+      // Same answers: nothing to tell.
+      client.setContext(EvaluationContext(userId: inside, country: 'AE'));
+      client.setContext(EvaluationContext(userId: outside, country: 'AE'));
+      await pumpEventQueue();
+
+      expect(changes, [
+        {'home_theme', 'new_checkout'},
+        {'new_checkout'},
+      ]);
     });
   });
 

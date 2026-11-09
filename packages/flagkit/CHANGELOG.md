@@ -1,3 +1,15 @@
+## 0.4.0
+
+- **Targeting rules:** a flag's `rules` (`TargetingRule`: an attribute of the `EvaluationContext`, a `TargetingOperator` and values) must all match, or the flag serves its off value (`targetingMiss`). Operators: `equals`, `notEquals`, `in`, `notIn`, `startsWith`, `endsWith`, `contains`, `greaterThan`, `lessThan`, `semverAtLeast`, `semverBelow`.
+- **A missing attribute never matches,** `notEquals` and `notIn` included; values compare by kind (text, number, version, boolean); countries without regard to case; versions as numbers (`2.10.0` is after `2.9.0`). An operator this version doesn't know is kept, and never matches.
+- **Percentage rollouts:** a flag's `rollout` (0–100, in steps of 0.01) serves its value to that share of the eligible users. The bucket is FNV-1a (32-bit) of `"key:unit"`, mod 10,000: the same on every device and platform, independent per flag, and monotonic (raising a rollout never drops anyone). `FlagDetail.bucket` and `rolloutPercent` say where the user fell.
+- **The unit** is the context's `userId`, else the install's anonymous id: a guest keeps their answer across launches, a signed-in user across devices.
+- **The full evaluation order:** not found → type mismatch → off (the kill switch beats everything) → rules → rollout → fallthrough. Reasons: `targetingMatch`, `targetingMiss`, `rolloutIncluded`, `rolloutExcluded`.
+- **`setContext` re-evaluates every flag,** and `changes` reports the flags whose value changed.
+- **The parser validates rules and rollouts:** a flag with rules it can't read, or a rollout out of range, is skipped and logged (0.3.0 skipped every such flag).
+- **`FakeRemoteConfigServer`:** `setRollout` and `setRules` in the console.
+- **`FlagKitTesting.useAnonymousId(id)`** (and `useRandomAnonymousIds()`): a new install gets a known id, so an app's widget tests know which side of a rollout they're on.
+
 ## 0.3.0
 
 - **Flags come from a server.** `refresh()` fetches the definitions through a `RemoteConfigTransport` (`FlagKitConfig.transport`), and returns a `RefreshResult`: `Updated` (what was added, changed, removed and skipped), `NotModified`, `Offline`, `Failed` or `Unauthorized`.

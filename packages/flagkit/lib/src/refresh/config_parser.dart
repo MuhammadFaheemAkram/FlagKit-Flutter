@@ -1,5 +1,6 @@
 import 'package:flagkit/src/model/flag_type.dart';
 import 'package:flagkit/src/model/flag_value_codec.dart';
+import 'package:flagkit/src/model/targeting_rule_codec.dart';
 import 'package:flagkit/src/repository/flag_definition.dart';
 import 'package:meta/meta.dart';
 
@@ -33,10 +34,9 @@ final _keyPattern = RegExp(r'^[a-z0-9_.-]{1,64}$');
 ///   rest apply. A newer server can add a type without breaking the flags
 ///   an older SDK does understand.
 ///
-/// A flag with targeting rules or a rollout is skipped too, until the SDK
-/// can evaluate them (0.4.0): served as if they weren't there, a flag
-/// meant for a quarter of users would reach all of them. Failing closed
-/// keeps the app on its default instead.
+/// A rollout is 0–100 % in steps of 0.01 (stored in basis points). Rules
+/// must be readable as a whole (see `rulesFromJson`); a rule with an
+/// operator this SDK doesn't know is kept, and never matches.
 @internal
 ParsedConfig parseConfig(
   Map<String, Object?> json, {
@@ -74,6 +74,8 @@ ParsedConfig parseConfig(
         offValue: flagValueFromJson(type, flag['offValue'])!,
         enabled: flag['enabled'] as bool? ?? true,
         updatedAt: fetchedAt.toUtc(),
+        rolloutBasisPoints: _basisPoints(flag['rollout']),
+        rules: rulesFromJson(flag['rules'])!,
       ),
     );
     seen.add(name);
@@ -99,9 +101,25 @@ String? _problemWith(Map<String, Object?> flag, Set<String> seen) {
   }
   final enabled = flag['enabled'];
   if (enabled != null && enabled is! bool) return '"enabled" is not a bool';
-  final rules = flag['rules'];
-  if (flag['rollout'] != null || (rules is List && rules.isNotEmpty)) {
-    return 'rules and rollouts need FlagKit 0.4.0';
+  final rollout = flag['rollout'];
+  if (rollout != null && _basisPoints(rollout) == null) {
+    return 'a rollout must be 0–100 in steps of 0.01 (was $rollout)';
+  }
+  if (rulesFromJson(flag['rules']) == null) {
+    return 'its rules can\'t be read (each needs an attribute, an operator '
+        'and values)';
   }
   return null;
+}
+
+/// A rollout in percent as basis points (12.5 → 1250), or `null` if it
+/// isn't 0–100 in steps of 0.01 (or is absent).
+int? _basisPoints(Object? percent) {
+  if (percent is! num || !percent.isFinite) return null;
+  if (percent < 0 || percent > 100) return null;
+  final basisPoints = (percent * 100).round();
+  // 12.345 % isn't a whole number of basis points: refused, not rounded,
+  // so the server's number is the one that is served.
+  if ((percent * 100 - basisPoints).abs() > 1e-6) return null;
+  return basisPoints;
 }

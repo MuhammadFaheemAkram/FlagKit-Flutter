@@ -1,6 +1,7 @@
 import 'package:flagkit/src/model/flag_type.dart';
 import 'package:flagkit/src/model/flag_value.dart';
-import 'package:meta/meta.dart';
+import 'package:flagkit/src/model/targeting_rule.dart';
+import 'package:flutter/foundation.dart';
 
 /// A flag as the server defines it: what to serve, and when.
 ///
@@ -19,15 +20,23 @@ final class FlagDefinition {
     required this.offValue,
     required this.enabled,
     required this.updatedAt,
-  }) : assert(value.type == offValue.type, 'both values have one type');
+    this.rolloutBasisPoints,
+    List<TargetingRule> rules = const [],
+  }) : rules = List.unmodifiable(rules),
+       assert(value.type == offValue.type, 'both values have one type'),
+       assert(
+         rolloutBasisPoints == null ||
+             (rolloutBasisPoints >= 0 && rolloutBasisPoints <= 10000),
+         'a rollout is 0–10000 basis points',
+       );
 
   final String key;
 
   /// Served when the flag applies.
   final FlagValue value;
 
-  /// Served when it doesn't: switched off (or, from 0.4.0, a rule missed or
-  /// the rollout excluded the user).
+  /// Served when it doesn't: switched off, a rule missed, or the rollout
+  /// excluded the user.
   final FlagValue offValue;
 
   /// The kill switch: `false` serves [offValue] whatever else applies.
@@ -35,6 +44,13 @@ final class FlagDefinition {
 
   /// When this definition was stored.
   final DateTime updatedAt;
+
+  /// The share of eligible users it applies to, in basis points (2500 is
+  /// 25 %), or `null` for all of them.
+  final int? rolloutBasisPoints;
+
+  /// Who is eligible: every rule must match. Empty: everyone.
+  final List<TargetingRule> rules;
 
   FlagType get type => value.type;
 
@@ -44,17 +60,29 @@ final class FlagDefinition {
       other.key == key &&
       other.value == value &&
       other.offValue == offValue &&
-      other.enabled == enabled;
+      other.enabled == enabled &&
+      other.rolloutBasisPoints == rolloutBasisPoints &&
+      listEquals(other.rules, rules);
 
   @override
   bool operator ==(Object other) =>
       other is FlagDefinition && sameAs(other) && other.updatedAt == updatedAt;
 
   @override
-  int get hashCode => Object.hash(key, value, offValue, enabled, updatedAt);
+  int get hashCode => Object.hash(
+    key,
+    value,
+    offValue,
+    enabled,
+    updatedAt,
+    rolloutBasisPoints,
+    Object.hashAll(rules),
+  );
 
   @override
   String toString() =>
       'FlagDefinition($key: $value / off $offValue, '
-      '${enabled ? 'on' : 'off'})';
+      '${enabled ? 'on' : 'off'}'
+      '${rolloutBasisPoints == null ? '' : ', rollout ${rolloutBasisPoints! / 100} %'}'
+      '${rules.isEmpty ? '' : ', rules $rules'})';
 }

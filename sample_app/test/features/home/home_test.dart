@@ -1,4 +1,6 @@
 import 'package:bloc_test/bloc_test.dart';
+import 'package:flagkit_sample/domain/flags/app_flags.dart';
+import 'package:flagkit_sample/domain/flags/flag_reading.dart';
 import 'package:flagkit_sample/domain/flags/home_config.dart';
 import 'package:flagkit_sample/features/home/cubit/home_cubit.dart';
 import 'package:flagkit_sample/features/home/cubit/home_state.dart';
@@ -26,6 +28,31 @@ void main() {
       expect(state.newHome, isTrue);
       expect(state.items, hasLength(8));
       expect(state.config, HomeConfig.fallback);
+    });
+
+    test('why: this home and this look, as the flags explain them', () {
+      const home = FlagReading(
+        key: 'new_home_screen',
+        value: 'true',
+        source: ReadingSource.server,
+        reason: ReadingReason.onForEveryone,
+      );
+      const theme = FlagReading(
+        key: 'home_theme',
+        value: '"modern"',
+        source: ReadingSource.server,
+        reason: ReadingReason.rulesMatched,
+      );
+      flags
+        ..homeTheme = AppThemeChoice.modern
+        ..readings[AppFlag.newHomeScreen] = home
+        ..readings[AppFlag.homeTheme] = theme;
+
+      final state = HomeCubit(flags).state;
+
+      expect(state.theme, AppThemeChoice.modern);
+      expect(state.homeWhy, home);
+      expect(state.themeWhy, theme);
     });
 
     blocTest<HomeCubit, HomeState>(

@@ -1,3 +1,4 @@
+import 'package:flagkit_sample/core/common/money.dart';
 import 'package:flagkit_sample/core/common/time_text.dart';
 import 'package:flagkit_sample/core/design_system/design_system.dart';
 import 'package:flagkit_sample/di/injection.dart';
@@ -73,8 +74,9 @@ class DashboardView extends StatelessWidget {
               leading: const Icon(Icons.flag_outlined),
               title: Text('FlagKit ${state.sdkVersion}'),
               subtitle: const Text(
-                'Rules and rollouts come in 0.4.0; until then a flag is on '
-                'or off for everyone.',
+                'Each flag is evaluated for you: switched off, then its '
+                'targeting rules, then its rollout. Profile changes who you '
+                'are.',
               ),
             ),
           ],
@@ -132,7 +134,14 @@ class _ReadingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final (icon, label, color) = sourceStyle(reading.source, context.appColors);
     final chip = StatusChip(icon: icon, label: label, color: color);
-    final details = Text('${reading.value} · ${reasonWords(reading.reason)}');
+    final bucket = switch (reading) {
+      FlagReading(:final bucket?, :final rolloutPercent?) =>
+        ' (bucket $bucket, rollout ${formatPercent(rolloutPercent)})',
+      _ => '',
+    };
+    final details = Text(
+      '${reading.value} · ${reasonWords(reading.reason)}$bucket',
+    );
     return MergeSemantics(
       child: ListTile(
         title: Text(reading.key),

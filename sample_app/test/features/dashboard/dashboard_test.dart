@@ -215,6 +215,25 @@ void main() {
       );
     });
 
+    testWidgets('a rolled-out flag shows the user\'s bucket', (tester) async {
+      debug.readings = const [
+        FlagReading(
+          key: 'new_checkout',
+          value: 'true',
+          source: ReadingSource.server,
+          reason: ReadingReason.inRollout,
+          bucket: 404,
+          rolloutPercent: 12.5,
+        ),
+      ];
+      await pump(tester);
+
+      expect(
+        find.text('true · you\'re in the rollout (bucket 404, rollout 12.5 %)'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('before the cache answers: a line says so', (tester) async {
       await pump(tester);
 

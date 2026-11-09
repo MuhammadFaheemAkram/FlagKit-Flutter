@@ -32,6 +32,8 @@ export 'package:flagkit/src/model/refresh_result.dart'
         RefreshResult,
         Unauthorized,
         Updated;
+export 'package:flagkit/src/model/targeting_rule.dart'
+    show TargetingOperator, TargetingRule;
 export 'package:flagkit/src/network/fake_remote_config_server.dart'
     show FakeRemoteConfigServer, FakeServerStats;
 export 'package:flagkit/src/network/remote_config_transport.dart'

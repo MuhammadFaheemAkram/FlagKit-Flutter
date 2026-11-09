@@ -15,12 +15,16 @@ final class FlagDetail {
     required this.value,
     required this.source,
     required this.reason,
+    this.bucket,
+    this.rolloutPercent,
   });
 
   /// A read FlagKit couldn't answer: the caller's default, for [reason].
   const FlagDetail.fallback(this.key, this.reason)
     : value = null,
-      source = FlagSource.defaultValue;
+      source = FlagSource.defaultValue,
+      bucket = null,
+      rolloutPercent = null;
 
   /// The flag's key.
   final String key;
@@ -35,6 +39,13 @@ final class FlagDetail {
   /// Why the flag has this value.
   final EvaluationReason reason;
 
+  /// For a rolled-out flag: who is asking's bucket, 0–9999 (included when
+  /// it's below [rolloutPercent] × 100). The same on every device and run.
+  final int? bucket;
+
+  /// For a rolled-out flag: the share of eligible users it applies to.
+  final double? rolloutPercent;
+
   /// Whether the caller's default applies.
   bool get isDefault => source == FlagSource.defaultValue;
 
@@ -44,13 +55,17 @@ final class FlagDetail {
       other.key == key &&
       other.value == value &&
       other.source == source &&
-      other.reason == reason;
+      other.reason == reason &&
+      other.bucket == bucket &&
+      other.rolloutPercent == rolloutPercent;
 
   @override
-  int get hashCode => Object.hash(key, value, source, reason);
+  int get hashCode =>
+      Object.hash(key, value, source, reason, bucket, rolloutPercent);
 
   @override
   String toString() =>
       'FlagDetail($key: ${value ?? 'the default'}, '
-      '${source.name}, ${reason.name})';
+      '${source.name}, ${reason.name}'
+      '${bucket == null ? '' : ', bucket $bucket of $rolloutPercent %'})';
 }

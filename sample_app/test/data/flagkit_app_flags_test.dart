@@ -2,6 +2,7 @@ import 'package:flagkit/flagkit.dart';
 import 'package:flagkit_sample/data/flags/app_flag_keys.dart';
 import 'package:flagkit_sample/data/flags/flagkit_app_flags.dart';
 import 'package:flagkit_sample/domain/flags/app_flags.dart';
+import 'package:flagkit_sample/domain/flags/flag_reading.dart';
 import 'package:flagkit_sample/domain/flags/home_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -134,6 +135,52 @@ void main() {
     await pumpEventQueue();
 
     expect(fired, 2);
+  });
+  group('explain', () {
+    test('each flag by its own key', () {
+      for (final flag in AppFlag.values) {
+        final key = AppFlagKeys.of(flag);
+        client.values
+          ..clear()
+          ..[key] = const BoolValue(true);
+
+        final reading = flags.explain(flag);
+        expect(reading.key, key);
+        expect(reading.reason, ReadingReason.onForEveryone);
+        for (final other in AppFlag.values.where((f) => f != flag)) {
+          expect(
+            flags.explain(other).reason,
+            ReadingReason.unknownFlag,
+            reason: '${other.name} must not read $key',
+          );
+        }
+      }
+    });
+
+    test('every key once, in AppFlagKeys.all', () {
+      expect(AppFlag.values.map(AppFlagKeys.of), AppFlagKeys.all);
+    });
+
+    test('a rollout\'s bucket and percentage', () {
+      client.values[AppFlagKeys.newCheckout] = const BoolValue(false);
+      client.details[AppFlagKeys.newCheckout] = (
+        FlagSource.cache,
+        EvaluationReason.rolloutExcluded,
+      );
+      client.rollouts[AppFlagKeys.newCheckout] = (4486, 25.0);
+
+      expect(
+        flags.explain(AppFlag.newCheckout),
+        const FlagReading(
+          key: AppFlagKeys.newCheckout,
+          value: 'false',
+          source: ReadingSource.cache,
+          reason: ReadingReason.outsideRollout,
+          bucket: 4486,
+          rolloutPercent: 25,
+        ),
+      );
+    });
   });
 }
 
