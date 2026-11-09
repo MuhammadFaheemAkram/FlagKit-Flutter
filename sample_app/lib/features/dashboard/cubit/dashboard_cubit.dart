@@ -19,6 +19,9 @@ class DashboardCubit extends Cubit<DashboardState> {
       _network.watchStatus().listen(
         (network) => emit(state.copyWith(network: network)),
       ),
+      _debug.watchRefreshLog().listen(
+        (log) => emit(state.copyWith(refreshLog: log)),
+      ),
     ];
   }
 
@@ -44,6 +47,13 @@ class DashboardCubit extends Cubit<DashboardState> {
       ),
     );
   }
+
+  /// Forgets the cached flags: every read is the app's default until the
+  /// next refresh (the view asks first). Overrides stay.
+  Future<void> clearCache() => _debug.clearCache();
+
+  /// Removes every local override.
+  Future<void> clearOverrides() => _debug.clearOverrides();
 
   /// The demo's "Device offline" switch.
   void simulateOffline(bool offline) => _network.simulateOffline(offline);

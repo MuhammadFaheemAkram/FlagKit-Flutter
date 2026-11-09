@@ -109,6 +109,45 @@ void main() {
             await tester.pumpAndSettle();
           },
         ),
+        (
+          'Dashboard, trying a user',
+          '/dashboard',
+          (tester) async {
+            final field = find.byKey(const ValueKey('tryUserId'));
+            // At 200 % the field is past what's built: scroll to it.
+            await tester.scrollUntilVisible(
+              field,
+              400,
+              scrollable: find.byType(Scrollable).first,
+            );
+            await tester.enterText(field, userInRollout);
+          },
+        ),
+        ('Flag, a rollout', '/dashboard/flags/new_checkout', null),
+        (
+          'Flag, its rules and an override that\'s refused',
+          '/dashboard/flags/home_theme',
+          (tester) async {
+            await tester.enterText(
+              find.byKey(const ValueKey('overrideValue')),
+              '  ',
+            );
+            await tester.tap(find.text('Override'));
+            await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+          },
+        ),
+        (
+          'Flag, overridden',
+          '/dashboard/flags/new_checkout',
+          (tester) async {
+            await tester.tap(find.text('Override: on'));
+            for (var i = 0; i < 3; i++) {
+              await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+              await tester.pumpAndSettle();
+            }
+          },
+        ),
+        ('Flag not found', '/dashboard/flags/gone', null),
         ('Page not found', '/nowhere', null),
       ]) {
         testWidgets(name, (tester) async {

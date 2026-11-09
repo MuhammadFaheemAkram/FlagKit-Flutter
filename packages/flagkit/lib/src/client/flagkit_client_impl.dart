@@ -5,6 +5,7 @@ import 'package:flagkit/src/cache/cache_policy.dart';
 import 'package:flagkit/src/client/flagkit_client.dart';
 import 'package:flagkit/src/config/flagkit_config.dart';
 import 'package:flagkit/src/connectivity/network_monitor.dart';
+import 'package:flagkit/src/debug/client_debug.dart';
 import 'package:flagkit/src/debug/flagkit_debug.dart';
 import 'package:flagkit/src/evaluation/flag_evaluator.dart';
 import 'package:flagkit/src/evaluation/typed_reads.dart';
@@ -12,6 +13,8 @@ import 'package:flagkit/src/model/cache_status.dart';
 import 'package:flagkit/src/model/evaluation_context.dart';
 import 'package:flagkit/src/model/evaluation_reason.dart';
 import 'package:flagkit/src/model/flag_detail.dart';
+import 'package:flagkit/src/model/flag_key.dart';
+import 'package:flagkit/src/model/flag_source.dart';
 import 'package:flagkit/src/model/flag_type.dart';
 import 'package:flagkit/src/model/flag_value.dart';
 import 'package:flagkit/src/model/refresh_record.dart';
@@ -19,7 +22,6 @@ import 'package:flagkit/src/model/refresh_result.dart';
 import 'package:flagkit/src/network/fake_remote_config_server.dart';
 import 'package:flagkit/src/refresh/refresh_manager.dart';
 import 'package:flagkit/src/repository/flag_repository.dart';
-import 'package:flagkit/src/repository/flag_snapshot.dart';
 import 'package:flagkit/src/scheduling/app_lifecycle.dart';
 import 'package:flagkit/src/scheduling/refresh_scheduler.dart';
 import 'package:flagkit/src/storage/flagkit_database.dart';
@@ -47,7 +49,6 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
     required this.logger,
     required this.database,
     required this.repository,
-    required this.debug,
     required this.refreshes,
     required this._monitor,
     required this._ownsMonitor,
@@ -91,7 +92,6 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
         logger: log,
         database: database,
         repository: repository,
-        debug: DatabaseDebug(database, config, clock: time),
         refreshes: RefreshManager(
           database: database,
           repository: repository,
@@ -159,11 +159,34 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
   );
 
   @override
-  final FlagKitDebug debug;
+  late final FlagKitDebug debug = ClientDebug(this);
 
   EvaluationContext _context = const EvaluationContext();
   final _changes = StreamController<Set<String>>.broadcast();
+  final _ticks = StreamController<void>.broadcast();
   bool _closed = false;
+
+  /// This session's reads by source, for the debug stats.
+  final evaluations = <FlagSource, int>{};
+
+  /// Fires when anything the debug tools show may have changed: the
+  /// definitions, the overrides, the context, a refresh starting or ending.
+  /// Unlike [changes], it fires even when no value changed (a new bucket,
+  /// a new reason).
+  Stream<void> get ticks => _ticks.stream;
+
+  void _tick() {
+    if (!_ticks.isClosed) _ticks.add(null);
+  }
+
+  /// Now, by the client's clock.
+  DateTime now() => _clock.now();
+
+  /// The network monitor the refreshes follow.
+  NetworkMonitor get monitor => _monitor;
+
+  /// Whether a refresh is running.
+  bool get refreshing => _refreshing != null;
 
   // A screen reads its flags on every build: one log line per unknown key
   // (or wrong-typed read) per session, not one per frame.
@@ -175,35 +198,43 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
     if (_closed) {
       return FlagDetail.fallback(key, EvaluationReason.notInitialized);
     }
-    final detail = _evaluate(repository.snapshot, key, requested);
+    final detail = evaluateFor(key, _context, requested: requested);
+    evaluations.update(detail.source, (n) => n + 1, ifAbsent: () => 1);
     if (detail.reason == EvaluationReason.flagNotFound &&
         _reportedUnknown.add(key)) {
       logger.debug('"$key" is not a known flag: the caller\'s default');
     }
     if (detail.reason == EvaluationReason.typeMismatch &&
         _reportedMismatch.add(key)) {
+      final type =
+          (repository.overrides[key]?.type ??
+                  repository.snapshot.flags[key]?.type)
+              ?.wireName;
       logger.warning(
-        '"$key" is a ${repository.snapshot.flags[key]?.type.wireName} flag, '
-        'read as ${requested?.wireName}: the caller\'s default',
+        '"$key" is a $type flag, read as ${requested?.wireName}: the '
+        'caller\'s default',
       );
     }
     return detail;
   }
 
-  FlagDetail _evaluate(
-    FlagSnapshot snapshot,
+  /// [key] evaluated for [context]: the current definitions and overrides,
+  /// bucketed by [context]'s unit. Not counted in [evaluations]: only the
+  /// app's reads are.
+  FlagDetail evaluateFor(
     String key,
-    FlagType? requested, {
-    EvaluationContext? context,
+    EvaluationContext context, {
+    FlagType? requested,
   }) {
-    final asking = context ?? _context;
+    final snapshot = repository.snapshot;
     return evaluateFlag(
       key: key,
       definition: snapshot.flags[key],
       source: snapshot.source,
       requested: requested,
-      context: asking,
-      unit: _unitOf(asking),
+      context: context,
+      unit: _unitOf(context),
+      override: repository.overrides[key],
     );
   }
 
@@ -213,24 +244,37 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
   String _unitOf(EvaluationContext context) =>
       context.userId ?? repository.anonymousId;
 
-  /// Runs [change], then tells [changes] which flags now evaluate to
-  /// another value: not which definitions changed, which may change
-  /// nothing a read returns.
-  Future<void> _changing(Future<FlagSnapshot> Function() change) async {
-    final before = repository.snapshot;
-    final after = await change();
+  /// Every key a read can answer from: the definitions, then overrides
+  /// for flags the server doesn't send.
+  Iterable<String> get knownKeys => {
+    ...repository.snapshot.flags.keys,
+    ...repository.overrides.keys,
+  };
+
+  Map<String, FlagValue?> _values([EvaluationContext? context]) => {
+    for (final key in knownKeys)
+      key: evaluateFor(key, context ?? _context).value,
+  };
+
+  /// Tells [changes] which of [before]'s and [after]'s keys differ.
+  void _report(Map<String, FlagValue?> before, Map<String, FlagValue?> after) {
     final changed = {
-      for (final key in {...before.flags.keys, ...after.flags.keys})
-        if (_valueOf(before, key) != _valueOf(after, key)) key,
+      for (final key in {...before.keys, ...after.keys})
+        if (before[key] != after[key]) key,
     };
+    _tick();
     if (changed.isNotEmpty && !_changes.isClosed) _changes.add(changed);
   }
 
-  FlagValue? _valueOf(
-    FlagSnapshot snapshot,
-    String key, [
-    EvaluationContext? context,
-  ]) => _evaluate(snapshot, key, null, context: context).value;
+  /// Runs [change], then tells [changes] which flags now evaluate to
+  /// another value: not which definitions changed, which may change
+  /// nothing a read returns. The values before are taken before the
+  /// change: an override changes no definition, only what reads return.
+  Future<void> _changing(Future<void> Function() change) async {
+    final before = _values();
+    await change();
+    _report(before, _values());
+  }
 
   @override
   EvaluationContext get context => _context;
@@ -242,17 +286,49 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
       return;
     }
     if (context == _context) return;
-    final before = _context;
+    final before = _values();
     _context = context;
     logger.debug('context: $context');
     // Every flag re-evaluates for the new context: signing in moves a user
     // to their own bucket, a new country may match other rules.
-    final snapshot = repository.snapshot;
-    final changed = {
-      for (final key in snapshot.flags.keys)
-        if (_valueOf(snapshot, key, before) != _valueOf(snapshot, key)) key,
-    };
-    if (changed.isNotEmpty && !_changes.isClosed) _changes.add(changed);
+    _report(before, _values());
+  }
+
+  /// Overrides [key] with [value] on this device, kept across restarts.
+  Future<void> setOverride(String key, FlagValue value) async {
+    if (!isValidFlagKey(key)) {
+      throw ArgumentError.value(key, 'key', 'not a valid flag key');
+    }
+    final defined = repository.snapshot.flags[key]?.type;
+    if (defined != null && defined != value.type) {
+      throw ArgumentError.value(
+        value,
+        'value',
+        '"$key" is a ${defined.wireName} flag, not ${value.type.wireName}',
+      );
+    }
+    if (_closed) {
+      logger.warning('setOverride() after shutdown: ignored');
+      return;
+    }
+    await _changing(
+      () => repository.setOverride(key, value, _clock.now().toUtc()),
+    );
+    logger.debug('override: $key = $value');
+  }
+
+  /// Removes [key]'s override.
+  Future<void> clearOverride(String key) async {
+    if (_closed || !repository.overrides.containsKey(key)) return;
+    await _changing(() => repository.removeOverride(key));
+    logger.debug('override cleared: $key');
+  }
+
+  /// Removes every override.
+  Future<void> clearOverrides() async {
+    if (_closed || repository.overrides.isEmpty) return;
+    await _changing(repository.clearOverrides);
+    logger.debug('overrides cleared');
   }
 
   @override
@@ -304,15 +380,21 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
 
   /// One refresh at a time, reporting the values it changed once, however
   /// many triggers (and `refresh()` calls) joined it.
-  Future<RefreshResult> _refresh(RefreshTrigger trigger) =>
-      _refreshing ??= _refreshAndReport(trigger)
-          .whenComplete(() => _refreshing = null);
+  Future<RefreshResult> _refresh(RefreshTrigger trigger) {
+    final running = _refreshing;
+    if (running != null) return running;
+    final started = _refreshing = _refreshAndReport(trigger).whenComplete(() {
+      _refreshing = null;
+      _tick();
+    });
+    _tick();
+    return started;
+  }
 
   Future<RefreshResult> _refreshAndReport(RefreshTrigger trigger) async {
     late RefreshResult result;
     await _changing(() async {
       result = await refreshes.refresh(trigger);
-      return repository.snapshot;
     });
     return result;
   }
@@ -350,6 +432,7 @@ final class FlagKitClientImpl with TypedReads implements FlagKitClient {
       await _monitor.dispose();
     }
     await _changes.close();
+    await _ticks.close();
     await database.close();
     logger.debug('shut down');
   }

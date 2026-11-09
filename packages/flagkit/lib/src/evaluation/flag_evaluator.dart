@@ -5,6 +5,7 @@ import 'package:flagkit/src/model/evaluation_reason.dart';
 import 'package:flagkit/src/model/flag_detail.dart';
 import 'package:flagkit/src/model/flag_source.dart';
 import 'package:flagkit/src/model/flag_type.dart';
+import 'package:flagkit/src/model/flag_value.dart';
 import 'package:flagkit/src/repository/flag_definition.dart';
 import 'package:meta/meta.dart';
 
@@ -13,9 +14,12 @@ import 'package:meta/meta.dart';
 ///
 /// The order:
 ///
-/// 1. no definition → the caller's default (`flagNotFound`);
-/// 2. a read of another type → the caller's default (`typeMismatch`);
-///    `getDouble` on an `int` flag is the one widening;
+/// 1. a local override → the override (`override`): a debug tool, so it
+///    wins over everything, definition or not; a read of another type
+///    still gets the caller's default (`typeMismatch`);
+/// 2. no definition → the caller's default (`flagNotFound`); a read of
+///    another type → the caller's default (`typeMismatch`); `getDouble`
+///    on an `int` flag is the one widening;
 /// 3. switched off → the off value (`off`): the kill switch wins over
 ///    everything below, whoever is asking;
 /// 4. rules that don't all match → the off value (`targetingMiss`);
@@ -37,7 +41,19 @@ FlagDetail evaluateFlag({
   required FlagType? requested,
   required EvaluationContext context,
   required String unit,
+  FlagValue? override,
 }) {
+  if (override != null) {
+    if (requested != null && !_readableAs(override.type, requested)) {
+      return FlagDetail.fallback(key, EvaluationReason.typeMismatch);
+    }
+    return FlagDetail(
+      key: key,
+      value: override,
+      source: FlagSource.override,
+      reason: EvaluationReason.override,
+    );
+  }
   if (definition == null) {
     return FlagDetail.fallback(key, EvaluationReason.flagNotFound);
   }

@@ -29,6 +29,7 @@ void main() {
         'lib/data/flags/flagkit_app_flags.dart',
         'lib/data/flags/flagkit_flags_debug.dart',
         'lib/data/flags/flag_reading_mapper.dart',
+        'lib/data/demo/fake_server_demo.dart',
         'lib/data/context/flagkit_user_context.dart',
         'lib/data/network/demo_network_monitor.dart',
         'lib/di/app_module.dart',

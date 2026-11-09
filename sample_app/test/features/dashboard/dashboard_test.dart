@@ -6,6 +6,8 @@ import 'package:flagkit_sample/domain/debug/flags_debug.dart';
 import 'package:flagkit_sample/domain/network/device_network.dart';
 import 'package:flagkit_sample/features/dashboard/cubit/dashboard_cubit.dart';
 import 'package:flagkit_sample/features/dashboard/cubit/dashboard_state.dart';
+import 'package:flagkit_sample/features/dashboard/cubit/server_console_cubit.dart';
+import 'package:flagkit_sample/features/dashboard/cubit/try_user_cubit.dart';
 import 'package:flagkit_sample/features/dashboard/dashboard_page.dart';
 import 'package:flagkit_sample/features/dashboard/dashboard_words.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -32,14 +34,17 @@ void main() {
   );
 
   late FakeDeviceNetwork network;
+  late FakeDemoServer server;
 
   setUp(() {
     debug = FakeFlagsDebug()..readings = const [reading];
     network = FakeDeviceNetwork();
+    server = FakeDemoServer();
   });
   tearDown(() async {
     await debug.close();
     await network.close();
+    await server.close();
   });
 
   group('DashboardCubit', () {
@@ -161,7 +166,7 @@ void main() {
       expect(refreshResultWords(summary), words);
     }
     expect(RefreshCause.values.map(causeWords).toSet(), hasLength(5));
-    expect(RefreshKind.values.map(kindWords).toSet(), hasLength(5));
+    expect(RefreshKind.values.map(outcomeWords).toSet(), hasLength(5));
   });
 
   test('every source and reason has words', () {
@@ -184,12 +189,16 @@ void main() {
     // rows that show.
     Future<void> pump(WidgetTester tester) async {
       tester.view
-        ..physicalSize = const Size(390 * 3, 3000 * 3)
+        ..physicalSize = const Size(390 * 3, 6000 * 3)
         ..devicePixelRatio = 3;
       addTearDown(tester.view.reset);
       await tester.pumpThemed(
-        BlocProvider(
-          create: (_) => DashboardCubit(debug, network),
+        MultiBlocProvider(
+          providers: [
+            BlocProvider(create: (_) => DashboardCubit(debug, network)),
+            BlocProvider(create: (_) => TryUserCubit(debug)),
+            BlocProvider(create: (_) => ServerConsoleCubit(server)),
+          ],
           child: const DashboardView(),
         ),
       );

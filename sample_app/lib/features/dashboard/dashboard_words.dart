@@ -1,5 +1,9 @@
+import 'package:flagkit_sample/core/common/money.dart';
+import 'package:flagkit_sample/core/common/time_text.dart';
 import 'package:flagkit_sample/core/design_system/design_system.dart';
 import 'package:flagkit_sample/domain/debug/flags_debug.dart';
+import 'package:flagkit_sample/domain/demo/demo_server.dart';
+import 'package:flagkit_sample/features/common/flag_words.dart';
 import 'package:material_ui/material_ui.dart';
 
 export 'package:flagkit_sample/features/common/flag_words.dart'
@@ -77,10 +81,56 @@ String causeWords(RefreshCause cause) => switch (cause) {
 };
 
 /// What a refresh did, in a word or two.
-String kindWords(RefreshKind kind) => switch (kind) {
+String outcomeWords(RefreshKind kind) => switch (kind) {
   RefreshKind.updated => 'Updated',
   RefreshKind.upToDate => 'Up to date',
   RefreshKind.offline => 'Offline',
   RefreshKind.failed => 'Failed',
   RefreshKind.rejected => 'Key rejected',
 };
+
+/// A flag's kind of value, in a word or two.
+String kindWords(FlagKind kind) => switch (kind) {
+  FlagKind.onOff => 'on/off',
+  FlagKind.text => 'text',
+  FlagKind.wholeNumber => 'whole number',
+  FlagKind.number => 'number',
+  FlagKind.json => 'JSON',
+};
+
+/// A reading's value, kind and reason in one line, with the bucket for a
+/// rollout: "true · on/off · you're in the rollout (bucket 404, 25 %)".
+String readingLine(FlagReading reading) {
+  final bucket = switch (reading) {
+    FlagReading(:final bucket?, :final rolloutPercent?) =>
+      ' (bucket $bucket, rollout ${formatPercent(rolloutPercent)})',
+    _ => '',
+  };
+  return [
+    reading.value,
+    if (reading.kind case final kind?) kindWords(kind),
+    '${reasonWords(reading.reason)}$bucket',
+  ].join(' · ');
+}
+
+/// The server's failure rate, as a choice.
+String failuresWords(ServerFailures failures) => switch (failures) {
+  ServerFailures.none => '0 %',
+  ServerFailures.half => '50 %',
+  ServerFailures.all => '100 %',
+};
+
+/// The server's speed, as a choice.
+String speedWords(ServerSpeed speed) => switch (speed) {
+  ServerSpeed.fast => 'Fast',
+  ServerSpeed.normal => 'Normal',
+  ServerSpeed.slow => 'Slow',
+};
+
+/// A refresh in the log: "At start · Updated · 09:41:00".
+String refreshLine(LastRefresh refresh) => [
+  causeWords(refresh.cause),
+  outcomeWords(refresh.kind),
+  clockTime(refresh.at),
+  ?refresh.error,
+].join(' · ');

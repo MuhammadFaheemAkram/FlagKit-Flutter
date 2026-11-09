@@ -173,6 +173,7 @@ void _client() {
           cacheStatus: CacheStatus.empty,
           flagCount: 0,
           anonymousId: 'id-1',
+          online: false,
         ),
       );
     });

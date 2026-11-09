@@ -149,4 +149,48 @@ void main() {
       }
     });
   });
+
+  group('FeatureFlag, FlagExplanation, RuleMatch', () {
+    final rule = TargetingRule(
+      attribute: 'country',
+      operator: TargetingOperator.isIn,
+      values: const ['PK'],
+    );
+    FeatureFlag flag({double? rollout = 25, bool enabled = true}) =>
+        FeatureFlag(
+          key: 'k',
+          value: const BoolValue(true),
+          offValue: const BoolValue(false),
+          enabled: enabled,
+          updatedAt: DateTime.utc(2026, 11, 9),
+          rolloutPercent: rollout,
+          rules: [rule],
+        );
+
+    test('a definition compares by value; its type is its value\'s', () {
+      expect(flag(), flag());
+      expect(flag().hashCode, flag().hashCode);
+      expect(flag(), isNot(flag(rollout: 50)));
+      expect(flag(), isNot(flag(enabled: false)));
+      expect(flag().type, FlagType.boolean);
+      expect(() => flag().rules.add(rule), throwsUnsupportedError);
+      expect(flag().toString(), contains('25.0 %'));
+    });
+
+    test('an explanation and its rules compare by value', () {
+      FlagExplanation explanation({bool matched = true}) => FlagExplanation(
+        detail: const FlagDetail.fallback('k', EvaluationReason.flagNotFound),
+        context: const EvaluationContext(country: 'PK'),
+        flag: flag(),
+        overrideValue: const BoolValue(true),
+        rules: [RuleMatch(rule, matched: matched)],
+      );
+
+      expect(explanation(), explanation());
+      expect(explanation().hashCode, explanation().hashCode);
+      expect(explanation(), isNot(explanation(matched: false)));
+      expect(RuleMatch(rule, matched: true).toString(), contains('matches'));
+      expect(RuleMatch(rule, matched: false).toString(), contains('no match'));
+    });
+  });
 }

@@ -1,3 +1,4 @@
+import 'package:flagkit/src/model/flag_key.dart';
 import 'package:flagkit/src/model/flag_type.dart';
 import 'package:flagkit/src/model/flag_value_codec.dart';
 import 'package:flagkit/src/model/targeting_rule_codec.dart';
@@ -20,8 +21,6 @@ final class ParsedConfig {
   /// Why each left-out definition was left out (`"key: reason"`).
   final List<String> skipped;
 }
-
-final _keyPattern = RegExp(r'^[a-z0-9_.-]{1,64}$');
 
 /// Validates the config [json] fetched at [fetchedAt].
 ///
@@ -86,7 +85,7 @@ ParsedConfig parseConfig(
 /// What's wrong with [flag], or `null` if it can be served.
 String? _problemWith(Map<String, Object?> flag, Set<String> seen) {
   final key = flag['key'];
-  if (key is! String || !_keyPattern.hasMatch(key)) {
+  if (key is! String || !isValidFlagKey(key)) {
     return 'a key must be 1–64 characters of a–z, 0–9, _ . -';
   }
   if (seen.contains(key)) return 'a second definition of the same key';

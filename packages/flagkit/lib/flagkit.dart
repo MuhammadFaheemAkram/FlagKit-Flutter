@@ -15,7 +15,10 @@ export 'package:flagkit/src/model/cache_status.dart' show CacheStatus;
 export 'package:flagkit/src/model/evaluation_context.dart'
     show EvaluationContext;
 export 'package:flagkit/src/model/evaluation_reason.dart' show EvaluationReason;
+export 'package:flagkit/src/model/feature_flag.dart' show FeatureFlag;
 export 'package:flagkit/src/model/flag_detail.dart' show FlagDetail;
+export 'package:flagkit/src/model/flag_explanation.dart'
+    show FlagExplanation, RuleMatch;
 export 'package:flagkit/src/model/flag_source.dart' show FlagSource;
 export 'package:flagkit/src/model/flag_type.dart' show FlagType;
 export 'package:flagkit/src/model/flag_value.dart'

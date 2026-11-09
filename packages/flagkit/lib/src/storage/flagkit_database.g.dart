@@ -1378,15 +1378,328 @@ class RefreshesCompanion extends UpdateCompanion<RefreshRow> {
   }
 }
 
+class $OverridesTable extends Overrides
+    with TableInfo<$OverridesTable, OverrideRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $OverridesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [key, type, value, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'overrides';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<OverrideRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  OverrideRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return OverrideRow(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $OverridesTable createAlias(String alias) {
+    return $OverridesTable(attachedDatabase, alias);
+  }
+}
+
+class OverrideRow extends DataClass implements Insertable<OverrideRow> {
+  final String key;
+  final String type;
+
+  /// The value, as JSON.
+  final String value;
+  final DateTime createdAt;
+  const OverrideRow({
+    required this.key,
+    required this.type,
+    required this.value,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['type'] = Variable<String>(type);
+    map['value'] = Variable<String>(value);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  OverridesCompanion toCompanion(bool nullToAbsent) {
+    return OverridesCompanion(
+      key: Value(key),
+      type: Value(type),
+      value: Value(value),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory OverrideRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return OverrideRow(
+      key: serializer.fromJson<String>(json['key']),
+      type: serializer.fromJson<String>(json['type']),
+      value: serializer.fromJson<String>(json['value']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'type': serializer.toJson<String>(type),
+      'value': serializer.toJson<String>(value),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  OverrideRow copyWith({
+    String? key,
+    String? type,
+    String? value,
+    DateTime? createdAt,
+  }) => OverrideRow(
+    key: key ?? this.key,
+    type: type ?? this.type,
+    value: value ?? this.value,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  OverrideRow copyWithCompanion(OverridesCompanion data) {
+    return OverrideRow(
+      key: data.key.present ? data.key.value : this.key,
+      type: data.type.present ? data.type.value : this.type,
+      value: data.value.present ? data.value.value : this.value,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OverrideRow(')
+          ..write('key: $key, ')
+          ..write('type: $type, ')
+          ..write('value: $value, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, type, value, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is OverrideRow &&
+          other.key == this.key &&
+          other.type == this.type &&
+          other.value == this.value &&
+          other.createdAt == this.createdAt);
+}
+
+class OverridesCompanion extends UpdateCompanion<OverrideRow> {
+  final Value<String> key;
+  final Value<String> type;
+  final Value<String> value;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const OverridesCompanion({
+    this.key = const Value.absent(),
+    this.type = const Value.absent(),
+    this.value = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  OverridesCompanion.insert({
+    required String key,
+    required String type,
+    required String value,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       type = Value(type),
+       value = Value(value),
+       createdAt = Value(createdAt);
+  static Insertable<OverrideRow> custom({
+    Expression<String>? key,
+    Expression<String>? type,
+    Expression<String>? value,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (type != null) 'type': type,
+      if (value != null) 'value': value,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  OverridesCompanion copyWith({
+    Value<String>? key,
+    Value<String>? type,
+    Value<String>? value,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return OverridesCompanion(
+      key: key ?? this.key,
+      type: type ?? this.type,
+      value: value ?? this.value,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('OverridesCompanion(')
+          ..write('key: $key, ')
+          ..write('type: $type, ')
+          ..write('value: $value, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$FlagKitDatabase extends GeneratedDatabase {
   _$FlagKitDatabase(QueryExecutor e) : super(e);
   $FlagKitDatabaseManager get managers => $FlagKitDatabaseManager(this);
   late final $FlagsTable flags = $FlagsTable(this);
   late final $MetaEntriesTable metaEntries = $MetaEntriesTable(this);
   late final $RefreshesTable refreshes = $RefreshesTable(this);
+  late final $OverridesTable overrides = $OverridesTable(this);
   late final FlagDao flagDao = FlagDao(this as FlagKitDatabase);
   late final MetaDao metaDao = MetaDao(this as FlagKitDatabase);
   late final RefreshDao refreshDao = RefreshDao(this as FlagKitDatabase);
+  late final OverrideDao overrideDao = OverrideDao(this as FlagKitDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1395,6 +1708,7 @@ abstract class _$FlagKitDatabase extends GeneratedDatabase {
     flags,
     metaEntries,
     refreshes,
+    overrides,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -2122,6 +2436,194 @@ typedef $$RefreshesTableProcessedTableManager =
       RefreshRow,
       PrefetchHooks Function()
     >;
+typedef $$OverridesTableCreateCompanionBuilder = OverridesCompanion Function({
+  required String key,
+  required String type,
+  required String value,
+  required DateTime createdAt,
+  Value<int> rowid,
+});
+typedef $$OverridesTableUpdateCompanionBuilder = OverridesCompanion Function({
+  Value<String> key,
+  Value<String> type,
+  Value<String> value,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$OverridesTableFilterComposer
+    extends Composer<_$FlagKitDatabase, $OverridesTable> {
+  $$OverridesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$OverridesTableOrderingComposer
+    extends Composer<_$FlagKitDatabase, $OverridesTable> {
+  $$OverridesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$OverridesTableAnnotationComposer
+    extends Composer<_$FlagKitDatabase, $OverridesTable> {
+  $$OverridesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$OverridesTableTableManager
+    extends
+        RootTableManager<
+          _$FlagKitDatabase,
+          $OverridesTable,
+          OverrideRow,
+          $$OverridesTableFilterComposer,
+          $$OverridesTableOrderingComposer,
+          $$OverridesTableAnnotationComposer,
+          $$OverridesTableCreateCompanionBuilder,
+          $$OverridesTableUpdateCompanionBuilder,
+          (
+            OverrideRow,
+            BaseReferences<_$FlagKitDatabase, $OverridesTable, OverrideRow>,
+          ),
+          OverrideRow,
+          PrefetchHooks Function()
+        > {
+  $$OverridesTableTableManager(_$FlagKitDatabase db, $OverridesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$OverridesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$OverridesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$OverridesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => OverridesCompanion(
+                key: key,
+                type: type,
+                value: value,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String key,
+                required String type,
+                required String value,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => OverridesCompanion.insert(
+                key: key,
+                type: type,
+                value: value,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$OverridesTable, OverrideRow>(table),
+                  BaseReferences<
+                    _$FlagKitDatabase,
+                    $OverridesTable,
+                    OverrideRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$OverridesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$FlagKitDatabase,
+      $OverridesTable,
+      OverrideRow,
+      $$OverridesTableFilterComposer,
+      $$OverridesTableOrderingComposer,
+      $$OverridesTableAnnotationComposer,
+      $$OverridesTableCreateCompanionBuilder,
+      $$OverridesTableUpdateCompanionBuilder,
+      (
+        OverrideRow,
+        BaseReferences<_$FlagKitDatabase, $OverridesTable, OverrideRow>,
+      ),
+      OverrideRow,
+      PrefetchHooks Function()
+    >;
 
 class $FlagKitDatabaseManager {
   final _$FlagKitDatabase _db;
@@ -2132,4 +2634,6 @@ class $FlagKitDatabaseManager {
       $$MetaEntriesTableTableManager(_db, _db.metaEntries);
   $$RefreshesTableTableManager get refreshes =>
       $$RefreshesTableTableManager(_db, _db.refreshes);
+  $$OverridesTableTableManager get overrides =>
+      $$OverridesTableTableManager(_db, _db.overrides);
 }

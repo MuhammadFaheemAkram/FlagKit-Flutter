@@ -1,3 +1,13 @@
+## 0.5.0
+
+- **Local overrides** (`FlagKit.debug.setOverride`, `clearOverride`, `clearOverrides`): a value set on this device wins over everything (source and reason `override`), for flags the server sends or not. They're kept across restarts and by `clearCache`, and `changes` reports them. A key that isn't valid, or a value of another type than the flag's, is an `ArgumentError`.
+- **The evaluation order** starts with the override: override → not found → type mismatch → off → rules → rollout → fallthrough.
+- **`watchFlags()`:** every flag the SDK can answer, by key, evaluated for the current context; again after every refresh, context change or override, even when only a reason or a bucket changed.
+- **`definitions`** (`FeatureFlag`: the value, the off value, enabled, the rollout, the rules), **`evaluateFor(key, context)`** ("what would this user get?") and **`explain(key)`** (`FlagExplanation`: the detail, the definition, the override, and each rule as a `RuleMatch`).
+- **`FlagKitStats`** gains the override count, online, refreshing, this session's reads by source, and the refreshes, failures and skipped definitions ever counted (kept in `meta`: the log keeps only the newest 50). Ticks that change nothing the stats show emit nothing.
+- **Schema v3** (`overrides`), with a tested migration from v2.
+- **Breaking:** `FlagKitDebug` has new members; apps that implement it (a fake in their tests) add them.
+
 ## 0.4.0
 
 - **Targeting rules:** a flag's `rules` (`TargetingRule`: an attribute of the `EvaluationContext`, a `TargetingOperator` and values) must all match, or the flag serves its off value (`targetingMiss`). Operators: `equals`, `notEquals`, `in`, `notIn`, `startsWith`, `endsWith`, `contains`, `greaterThan`, `lessThan`, `semverAtLeast`, `semverBelow`.

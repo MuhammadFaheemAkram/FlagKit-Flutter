@@ -123,6 +123,32 @@ void main() {
     expect(targeted.rolloutPercent, 100);
     expect(describeOperator(rule.operator), isNotEmpty);
 
+    // The debug tools: definitions, every flag, another user, overrides.
+    final FeatureFlag definition = debug.definitions.single;
+    expect(definition.rolloutPercent, 100);
+    final List<FlagDetail> flags = await debug.watchFlags().first;
+    expect(flags.single.key, 'new_home_screen');
+    expect(
+      debug
+          .evaluateFor(
+            'new_home_screen',
+            const EvaluationContext(country: 'GB'),
+          )
+          .reason,
+      EvaluationReason.targetingMiss,
+    );
+    final FlagExplanation explanation = debug.explain('new_home_screen');
+    final RuleMatch match = explanation.rules.single;
+    expect(match.matched, isTrue);
+    await debug.setOverride('new_home_screen', const BoolValue(false));
+    expect(FlagKit.detail('new_home_screen').source, FlagSource.override);
+    await debug.clearOverride('new_home_screen');
+    await debug.setOverride('anything', const IntValue(1));
+    await debug.clearOverrides();
+    final FlagKitStats after = await debug.watchStats().first;
+    expect(after.overrideCount, 0);
+    expect(after.refreshCount, greaterThan(0));
+
     // A host can write its own transport and throw the SDK's errors.
     final RemoteConfigTransport custom = _HostTransport();
     final FetchResponse response = await custom.fetch(
@@ -191,6 +217,9 @@ const _exported = [
   'EvaluationContext',
   'TargetingRule',
   'TargetingOperator',
+  'FeatureFlag',
+  'FlagExplanation',
+  'RuleMatch',
   'EvaluationReason',
   'FlagDetail',
   'FlagSource',

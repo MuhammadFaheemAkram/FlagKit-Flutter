@@ -11,6 +11,7 @@ import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
+import 'generated/schema_v3.dart' as v3;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -96,6 +97,79 @@ void main() {
           [for (final row in meta) row.toJson()],
         );
         expect(await newDb.select(newDb.refreshes).get(), isEmpty);
+      },
+    );
+  });
+
+  // Phase 5: a device with cached flags and a refresh log keeps both, and
+  // starts with no overrides.
+  test('v2 → v3 keeps the flags, the meta and the log', () async {
+    const flags = [
+      v2.FlagsData(
+        key: 'new_checkout',
+        type: 'boolean',
+        value: 'true',
+        offValue: 'false',
+        enabled: 1,
+        rolloutBp: 2500,
+        rules: '[{"attribute":"country","operator":"in","values":["PK"]}]',
+        updatedAt: '2026-11-04T09:41:00.000Z',
+      ),
+    ];
+    const meta = [
+      v2.MetaData(name: 'anonymous_id', value: 'anon-1'),
+      v2.MetaData(name: 'config_version', value: '2'),
+    ];
+    const log = [
+      v2.RefreshesData(
+        id: 1,
+        trigger: 'startup',
+        startedAt: '2026-11-04T09:41:00.000Z',
+        finishedAt: '2026-11-04T09:41:01.000Z',
+        outcome: 'updated',
+        added: 1,
+        changed: 0,
+        removed: 0,
+        skipped: 0,
+        configVersion: 2,
+      ),
+    ];
+
+    await verifier.testWithDataIntegrity(
+      oldVersion: 2,
+      newVersion: 3,
+      createOld: v2.DatabaseAtV2.new,
+      createNew: v3.DatabaseAtV3.new,
+      openTestedDatabase: FlagKitDatabase.new,
+      createItems: (batch, oldDb) {
+        batch
+          ..insertAll(oldDb.flags, flags)
+          ..insertAll(oldDb.meta, meta)
+          ..insertAll(oldDb.refreshes, log);
+      },
+      validateItems: (newDb) async {
+        expect(
+          [
+            for (final row in await newDb.select(newDb.flags).get())
+              row.toJson(),
+          ],
+          [for (final row in flags) row.toJson()],
+        );
+        expect(
+          [
+            for (final row in await newDb.select(newDb.meta).get())
+              row.toJson(),
+          ],
+          [for (final row in meta) row.toJson()],
+        );
+        expect(
+          [
+            for (final row in await newDb.select(newDb.refreshes).get())
+              row.toJson(),
+          ],
+          [for (final row in log) row.toJson()],
+        );
+        expect(await newDb.select(newDb.overrides).get(), isEmpty);
       },
     );
   });

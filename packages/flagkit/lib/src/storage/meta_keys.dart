@@ -14,4 +14,13 @@ abstract final class MetaKeys {
   /// The server's version of the cached definitions: sent with the next
   /// fetch, so an unchanged config needs no download.
   static const configVersion = 'config_version';
+
+  /// How many refreshes were logged, ever (the log keeps only the newest).
+  static const refreshTotal = 'refresh_total';
+
+  /// How many of them failed (an error, or a rejected key).
+  static const refreshFailedTotal = 'refresh_failed_total';
+
+  /// How many invalid definitions refreshes left out, in all.
+  static const skippedTotal = 'skipped_total';
 }

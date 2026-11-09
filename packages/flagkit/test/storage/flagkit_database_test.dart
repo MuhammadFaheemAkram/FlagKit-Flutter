@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flagkit/src/storage/flagkit_database.dart';
+import 'package:flagkit/src/storage/meta_keys.dart';
+import 'package:flagkit/src/storage/refresh_dao.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../helpers/sdk.dart';
@@ -25,14 +27,14 @@ void main() {
       );
 
   test('the current schema version is exported, with every table', () {
-    final file = File('drift_schemas/flagkit_database/drift_schema_v2.json');
+    final file = File('drift_schemas/flagkit_database/drift_schema_v3.json');
     final schema = jsonDecode(file.readAsStringSync()) as Map<String, Object?>;
     final entities = (schema['entities']! as List<Object?>)
         .cast<Map<String, Object?>>()
         .map((e) => (e['data']! as Map<String, Object?>)['name']);
 
-    expect(db.schemaVersion, 2);
-    expect(entities, containsAll(['flags', 'meta', 'refreshes']));
+    expect(db.schemaVersion, 3);
+    expect(entities, containsAll(['flags', 'meta', 'refreshes', 'overrides']));
   });
 
   group('the CHECKs refuse a broken row', () {
@@ -63,6 +65,64 @@ void main() {
         expect(insert(values), throwsA(isA<Exception>()));
       });
     }
+  });
+
+  group('the overrides\' CHECKs refuse a broken row', () {
+    Future<void> insert(String values) => db.customStatement(
+      'INSERT INTO overrides (key, type, value, created_at) VALUES ($values)',
+    );
+    const good = "'k', 'int', '5', '2026-11-09T09:41:00.000Z'";
+
+    test('a valid row is accepted', () async {
+      await insert(good);
+      expect(await db.overrideDao.all(), hasLength(1));
+    });
+
+    for (final (name, values) in [
+      ('a blank key', good.replaceFirst("'k'", "''")),
+      ('an unknown type', good.replaceFirst("'int'", "'date'")),
+      ('a value that isn\'t JSON', good.replaceFirst("'5'", "'five'")),
+      ('a local time', good.replaceFirst('.000Z', '.000')),
+    ]) {
+      test(name, () {
+        expect(insert(values), throwsA(isA<Exception>()));
+      });
+    }
+  });
+
+  group('refresh counters', () {
+    Future<int?> counter(String name) async =>
+        int.tryParse(await db.metaDao.read(name) ?? '');
+
+    RefreshesCompanion row(String outcome, {int skipped = 0}) =>
+        RefreshesCompanion.insert(
+          trigger: 'manual',
+          startedAt: testNow,
+          finishedAt: testNow,
+          outcome: outcome,
+          skipped: Value(skipped),
+        );
+
+    test('count every refresh, the failures and the skipped, ever', () async {
+      await db.refreshDao.add(row('updated', skipped: 2));
+      await db.refreshDao.add(row('failed'));
+      await db.refreshDao.add(row('unauthorized'));
+      await db.refreshDao.add(row('offline'));
+      await db.refreshDao.add(row('notModified', skipped: 1));
+
+      expect(await counter(MetaKeys.refreshTotal), 5);
+      expect(await counter(MetaKeys.refreshFailedTotal), 2);
+      expect(await counter(MetaKeys.skippedTotal), 3);
+    });
+
+    test('outlive the log it trims', () async {
+      for (var i = 0; i < RefreshDao.keep + 5; i++) {
+        await db.refreshDao.add(row('updated'));
+      }
+
+      expect(await db.refreshDao.newest(), hasLength(RefreshDao.keep));
+      expect(await counter(MetaKeys.refreshTotal), RefreshDao.keep + 5);
+    });
   });
 
   group('flags', () {

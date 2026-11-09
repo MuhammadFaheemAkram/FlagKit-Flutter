@@ -8,7 +8,7 @@ A small feature flag SDK for Flutter apps, built to show how one is designed:
 
 It talks to a fake remote config server: this is a learning project, not a hosted service.
 
-> **Status: 0.4.0: targeting and rollouts.** Definitions come from a `RemoteConfigTransport` (a fake server by default), are cached on the device, and every read evaluates them in memory for the current `EvaluationContext`: the kill switch, then targeting rules, then a percentage rollout. Overrides arrive in 0.5.0.
+> **Status: 0.5.0: debug tools.** Definitions come from a `RemoteConfigTransport` (a fake server by default), are cached on the device, and every read evaluates them in memory for the current `EvaluationContext`: a local override first, then the kill switch, targeting rules and a percentage rollout. `FlagKit.debug` shows every flag, explains each one, and answers for another user.
 > See the [repository](https://github.com/MuhammadFaheemAkram/FlagKit-Flutter) for the plan, the sample app and the design docs.
 
 ## Usage
@@ -51,7 +51,8 @@ final detail = FlagKit.detail('new_checkout'); // value, source, reason
 - **Cached, read from memory.** Definitions live in the SDK's own `flagkit.sqlite`, survive restarts and work offline; `initialize` loads them once, and reads never touch the disk.
 - **Every flag has a value and an off value.** Switched off on the server, a flag serves its off value (reason `off`), whatever else applies.
 - **Expired flags are still served.** The cache's status (`fresh`, `stale`, `expired`, `empty`) decides how hard FlagKit refreshes, never what a read returns.
-- **`clearCache()`** forgets the cached flags (not the install's anonymous id), and `changes` reports the flags whose value changed.
+- **`clearCache()`** forgets the cached flags (not the install's anonymous id, nor the local overrides), and `changes` reports the flags whose value changed.
+- **Overrides are debug tools:** set on this device, they win over everything, show as source `override`, and stay until cleared.
 - **A cache file that can't be opened** never fails `initialize`: the session runs in memory, logged.
 
 ## Refreshing
@@ -123,9 +124,20 @@ Every read evaluates, in order:
 ```dart
 FlagKit.debug.watchStats().listen((stats) {
   // stats.cacheStatus, .flagCount, .fetchedAt, .configVersion, .anonymousId,
-  // stats.lastRefresh (a RefreshRecord)
+  // .lastRefresh (a RefreshRecord), .overrideCount, .online, .refreshing,
+  // .evaluations (reads by source), .refreshCount, .failedRefreshCount, .skippedCount
 });
 FlagKit.debug.watchRefreshes(); // the refresh log, newest first
+```
+
+Local overrides, every flag, another user:
+
+```dart
+await FlagKit.debug.setOverride('new_checkout', const BoolValue(true)); // wins; kept until cleared
+FlagKit.debug.watchFlags();                                   // List<FlagDetail>, for the current context
+FlagKit.debug.evaluateFor('new_checkout', const EvaluationContext(userId: 'maya'));
+final why = FlagKit.debug.explain('home_theme');              // the definition, the override, each rule's result
+await FlagKit.debug.clearOverrides();
 ```
 
 ## Testing your app

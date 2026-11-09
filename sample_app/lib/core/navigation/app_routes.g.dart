@@ -54,6 +54,14 @@ RouteBase get $mainShellRoute => StatefulShellRouteData.$route(
           name: 'dashboard',
           hasOverriddenOnExit: false,
           factory: $DashboardRoute._fromState,
+          routes: [
+            GoRouteData.$route(
+              path: 'flags/:flagKey',
+              name: 'flag',
+              hasOverriddenOnExit: false,
+              factory: $FlagDetailRoute._fromState,
+            ),
+          ],
         ),
       ],
     ),
@@ -131,6 +139,31 @@ mixin $DashboardRoute on GoRouteData {
 
   @override
   String get location => GoRouteData.$location('/dashboard');
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin $FlagDetailRoute on GoRouteData {
+  static FlagDetailRoute _fromState(GoRouterState state) =>
+      FlagDetailRoute(flagKey: state.pathParameters['flagKey']!);
+
+  FlagDetailRoute get _self => this as FlagDetailRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+    '/dashboard/flags/${Uri.encodeComponent(_self.flagKey)}',
+  );
 
   @override
   void go(BuildContext context) => context.go(location);

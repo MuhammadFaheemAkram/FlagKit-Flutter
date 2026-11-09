@@ -13,6 +13,7 @@ void main() {
     FlagSource source = FlagSource.cache,
     EvaluationContext context = const EvaluationContext(),
     String unit = 'install-1',
+    FlagValue? override,
   }) => evaluateFlag(
     key: 'k',
     definition: definition,
@@ -20,6 +21,7 @@ void main() {
     requested: requested,
     context: context,
     unit: unit,
+    override: override,
   );
 
   test('no definition: the caller\'s default (flagNotFound)', () {
@@ -243,6 +245,60 @@ void main() {
           unit: inside,
         ).toString(),
         contains('bucket ${bucketOf('k', inside)} of 25.0 %'),
+      );
+    });
+  });
+
+  group('an override', () {
+    test('wins over everything: source and reason override', () {
+      for (final flag in [
+        null,
+        definition('k', enabled: false),
+        definition('k', rolloutBasisPoints: 0),
+        definition(
+          'k',
+          rules: [
+            TargetingRule(
+              attribute: 'country',
+              operator: TargetingOperator.equals,
+              values: const ['PK'],
+            ),
+          ],
+        ),
+      ]) {
+        expect(
+          evaluate(
+            flag,
+            override: const BoolValue(true),
+            requested: FlagType.boolean,
+          ),
+          const FlagDetail(
+            key: 'k',
+            value: BoolValue(true),
+            source: FlagSource.override,
+            reason: EvaluationReason.override,
+          ),
+        );
+      }
+    });
+
+    test('read as another type: the caller\'s default', () {
+      expect(
+        evaluate(
+          null,
+          override: const StringValue('x'),
+          requested: FlagType.integer,
+        ),
+        const FlagDetail.fallback('k', EvaluationReason.typeMismatch),
+      );
+      expect(
+        evaluate(
+          null,
+          override: const IntValue(3),
+          requested: FlagType.decimal,
+        ).value,
+        const IntValue(3),
+        reason: 'an int widens, as for a definition',
       );
     });
   });

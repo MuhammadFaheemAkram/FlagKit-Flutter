@@ -41,8 +41,8 @@ The SDK is built in **strict, reviewable phases**. Each phase ends with:
 | 2 | Storage and the cache: drift, the snapshot, the cache policy, the anonymous id, `clearCache`, the first debug stats | ✅ Done |
 | 3 | The remote config pipeline: the transport and fake server, conditional and validated refreshes, the refresh log, the network monitor, the triggers, `startupWait` | ✅ Done |
 | 4 | Rollouts and targeting: FNV-1a buckets, typed rules, the full evaluation order, re-evaluation on a context change, "Why am I seeing this?" | ✅ Done |
-| 5 | The debug dashboard and SDK tools: overrides, "try a user", the refresh log | ⏳ Next |
-| 6 | Documentation & CI | |
+| 5 | The debug dashboard and SDK tools: local overrides (schema v3), every flag explained, "try a user", the server console, the refresh log and counts | ✅ Done |
+| 6 | Documentation & CI | ⏳ Next |
 
 ---
 
@@ -84,7 +84,8 @@ The public API is one library, [`package:flagkit/flagkit.dart`](packages/flagkit
 | `TargetingRule`, `TargetingOperator` | A flag's targeting: an attribute, an operator (`in`, `semverAtLeast`, …) and values; every rule must match |
 | `RefreshResult` | What a refresh did: `Updated`, `NotModified`, `Offline`, `Failed`, `Unauthorized`, `NotInitialized` |
 | `CacheStatus` | How fresh the cache is: `fresh`, `stale`, `expired`, `empty` |
-| `FlagKitDebug`, `FlagKitStats` | The debug tools (`FlagKit.debug`): live stats (cache status, flag count, fetched at, config version, anonymous id, the last refresh) and the refresh log |
+| `FlagKitDebug`, `FlagKitStats` | The debug tools (`FlagKit.debug`): live stats (the cache, the last refresh, overrides, online, refreshing, reads by source, refresh counts), the refresh log, every flag (`watchFlags`), `definitions`, `evaluateFor` another user, `explain`, local overrides |
+| `FeatureFlag`, `FlagExplanation`, `RuleMatch` | A definition as the server sent it; everything behind one read, with each rule's result |
 | `RefreshRecord`, `RefreshTrigger`, `RefreshOutcome` | One refresh in the log: why it ran, what came of it |
 | `RemoteConfigTransport`, `FetchRequest`, `FetchResponse` (`FetchedConfig`, `ConfigNotModified`) | The network boundary: set `FlagKitConfig.transport` to fetch from a real backend |
 | `TransportException` (`ServerUnreachable`, `ServerFailure`, `ApiKeyRejected`) | Why a fetch failed |
@@ -119,6 +120,9 @@ Everything else is in `lib/src/`, marked `@internal`, and out of reach.
 - **`startupWait`:** with nothing cached, `initialize` waits up to this long for the first fetch.
 - **Offline, nothing is attempted,** and the cached flags keep serving reads.
 
+- **Local overrides** (0.5.0): `FlagKit.debug.setOverride(key, value)` wins over everything (source `override`), for a flag the server sends or not; kept across restarts and by `clearCache` until cleared; a wrong type or key is an `ArgumentError`.
+- **Debug tools that explain** (0.5.0): `watchFlags` (every flag, again when a reason or bucket changes, not only a value), `evaluateFor` another user without changing the context, `explain` (each rule and whether it matches), and stats with counters that outlive the 50-entry log.
+
 - **Targeted and rolled out** (0.4.0):
   - **the full order:** unknown or another type → your default; switched off → the off value (**the kill switch beats everything**); rules that don't all match → the off value (`targetingMiss`); a rollout → the value for that share of the eligible (`rolloutIncluded` / `targetingMatch`), the off value for the rest (`rolloutExcluded`); otherwise the value;
   - **rules** compare an attribute of the context by kind: text (countries without regard to case), numbers, **versions as versions** (`2.10.0` after `2.9.0`); **a missing attribute never matches**, `notIn` included; an unknown operator never matches, and is logged;
@@ -133,7 +137,13 @@ Everything else is in `lib/src/`, marked `@internal`, and out of reach.
 - 🛒 **Checkout:** a fixed cart with the discount from `discount_percentage` (**apps 2.0.0 and later**), in the style `new_checkout` picks, **rolled out to 25 %**: a one-page checkout that asks before paying, or a classic stepper.
 - ❓ **"Why am I seeing this?"** on Home and Checkout: each flag's reason in a sentence, with the user's bucket for a rollout ("outside its 25 % rollout (bucket 2679 of 10,000, not below 2500)").
 - 👤 **Profile:** the **evaluation context**: sign in as a user id, pick a country and an app version, see the install id rollouts use while signed out. They go to the SDK at once, and the other tabs follow.
-- 🚩 **Dashboard:** the cache (its status, how many flags, when they were fetched, the last refresh, the install id), **Refresh** (with its result in words), the network and a **Device offline** switch, and every flag the app reads, with its value, where it came from and why. Overrides and the server's console arrive with the later phases.
+- 🚩 **Dashboard:** the learning screen.
+  - **The cache:** its status, flag and override counts, the config version, when it was fetched, the last refresh, the install id, a progress line while any refresh runs; **Refresh** (its result in words), **Clear cache** (asks first), **Clear overrides**.
+  - **The network** and a **Device offline** switch.
+  - **Every flag:** its value, kind, source and reason (with the bucket for a rollout). Tap one for its page: the server's value and off value, the kill switch, the rollout and **this user's bucket**, **each rule and whether it matches**, and an **override** (On / Off, or a typed value checked against the flag's kind).
+  - **Try a user:** type an id, see what every flag would give them, without changing who the app is for.
+  - **The server console** (the demo's, not the SDK's): switch flags on and off, set a rollout, change the look the server serves, make answers fail (0 / 50 / 100 %) or slow; then Refresh to see it arrive.
+  - **The refresh log** (the last 10) and **stats** (reads by source, refreshes, failures, invalid flags left out).
 - ♿ **Accessible:** dark mode and large text on every screen; never color alone. A test tour checks every screen in light and dark at 200 % text.
 
 **The app never reads a flag by its key.** Its Cubits ask the app's own `AppFlags` port (`flags.newCheckout`, `flags.feedPageSize`); one adapter holds every key and default, and a test checks that the keys appear nowhere else.
@@ -166,15 +176,15 @@ An SDK's dependencies become every host app's dependencies, so **the SDK and the
 ```
 sample app                                       the SDK (package:flagkit)
 ──────────                                       ─────────────────────────
-View ─▶ Cubit ─▶ AppFlags / UserContext / FlagsDebug  (the app's ports)
+View ─▶ Cubit ─▶ AppFlags / UserContext / FlagsDebug / DemoServer  (the app's ports)
                         │
                         ▼
       FlagKitAppFlags · FlagKitUserContext · FlagKitFlagsDebug ──▶ FlagKitClient ◀── FlagKit (static facade)
              (the adapters: every key and default here)                  │
                                                                          ▼
-                              evaluate(key, type, context) ─▶ FlagSnapshot (in memory) ─▶ FlagDetail (value, source, reason, bucket)
-                                 off → rules (targeting) → rollout (FNV-1a bucket of key:unit)   ▲ loaded at start, replaced whole
-                                                                  FlagRepository ─▶ drift (flagkit.sqlite: flags, meta, refreshes)
+                              evaluate(key, type, context) ─▶ FlagSnapshot + overrides (in memory) ─▶ FlagDetail (value, source, reason, bucket)
+                      override → off → rules (targeting) → rollout (FNV-1a bucket of key:unit)   ▲ loaded at start, replaced whole
+                                                                  FlagRepository ─▶ drift (flagkit.sqlite: flags, meta, refreshes, overrides)
                                                                          ▲
    RefreshScheduler (startup · stale · resumed · reconnect) ─▶ RefreshManager ─▶ RemoteConfigTransport (FakeRemoteConfigServer)
                                                                   (single-flight, conditional, validated, atomic, logged)
@@ -195,8 +205,8 @@ FlagKit/                       # the repo root: a pub workspace (one lockfile)
 │   ├── assets/remote_config.json   # the demo server's flags
 │   └── lib/
 │       ├── app/  core/{common,design_system,navigation}  di/
-│       ├── domain/            # the ports (AppFlags, UserContext, FlagsDebug, DeviceNetwork), HomeConfig, the cart, the feed
-│       ├── data/              # the adapters, AppFlagKeys (the one place keys live), DemoNetworkMonitor
+│       ├── domain/            # the ports (AppFlags, UserContext, FlagsDebug, DemoServer, DeviceNetwork), HomeConfig, the cart, the feed
+│       ├── data/              # the adapters, AppFlagKeys (the one place keys live), DemoNetworkMonitor, FakeServerDemo
 │       └── features/          # shell, home, checkout, profile, dashboard; common/ (the "Why am I seeing this?" line)
 ├── analysis_options.yaml      # one set of rules (the SDK adds its own)
 └── .github/workflows/flutter-ci.yml
@@ -232,15 +242,13 @@ fvm dart format --output=none --set-exit-if-changed .
 (cd packages/flagkit && fvm flutter pub publish --dry-run && fvm dart doc --dry-run)
 ```
 
-**429 tests** after Phase 4:
-- **The SDK (264):** everything from Phase 3, plus:
-  - **the hash:** FNV-1a's published vectors, UTF-8 not UTF-16, 32 bits;
-  - **buckets:** 0–9999 and stable, `"key:unit"`, independent per flag (two 10 % rollouts share about 1 %), the distribution of 10,000 ids at 0 / 10 / 25 / 50 / 100 %, monotonic in 5 % steps, the threshold's edge;
-  - **versions:** parsing, malformed ones, `2.10.0 > 2.9.0`, `2.0 == 2.0.0`;
-  - **every operator,** a missing attribute (every operator, `notIn` included), kinds that don't compare, caseless countries, unknown operators, AND;
-  - **the evaluator's order** with every reason and the bucket; the parser's rollouts and rules; rules and rollouts through the database, the refresh and the fake server's console;
-  - **the client:** reads for the context, a guest bucketed by the install, a user by their id, `changes` on a context change; `FlagKitTesting.useAnonymousId`.
-- **The sample (165):** everything from Phase 3, plus the why sentences and the `WhyLine` (with its expanded state), `explain` by key, the install id, the Dashboard's bucket, and **the real SDK on the demo server's targeted flags:** a country the theme targets, signing in moving the bucket into the rollout, an app before 2.0.0 losing the discount; new accessibility stops with the why lines open.
+**523 tests** after Phase 5:
+- **The SDK (304):** everything from Phase 4, plus:
+  - **overrides** on a real client: winning over the kill switch, the rules and the rollout; for a flag the server doesn't send; a read of another type; a bad key or type refused; cleared one at a time or all, with `changes`; kept by `clearCache` and across a restart from a real file;
+  - **`watchFlags`** (by key; again on a context change that changes no value; after an override and a refresh), **`definitions`**, **`evaluateFor`** (the context unchanged, not counted), **`explain`** (each rule's result);
+  - **the stats:** overrides, online (and its changes), refreshing during a refresh, reads by source, counters for refreshes, failures and skipped definitions that outlive the log, no event for a tick that changes nothing;
+  - schema v3: the overrides' `CHECK`s, the counters, the v2 → v3 migration with real rows; the models' value equality.
+- **The sample (219):** everything from Phase 4, plus the adapters on the real SDK (inspect, try a user, overrides typed as text, the cache's counts, the log, the server console's adapter and knobs), the new Cubits and views (a flag's page in every state, Try a user, the console, Clear cache's confirmation), and **flows on the real SDK:** the console switches a flag off and Refresh brings it; an override from a flag's page changes Checkout and is cleared; Clear cache → defaults → Refresh; Try a user; deep links to a flag and to a flag that's gone; new accessibility stops for the flag page and Try a user.
 
 CI runs on every push to `main` and every pull request: the FVM-pinned Flutter; generated code up to date and complete; format and analyze; each package's tests; `pub publish --dry-run` (a warning fails it); `dart doc --dry-run` (a broken doc reference fails it).
 
@@ -269,6 +277,8 @@ CI runs on every push to `main` and every pull request: the FVM-pinned Flutter; 
 | Rollout hash | `hashCode`-style, undefined | undefined | FNV-1a 32 over UTF-8, golden vectors, basis points (12.5 % works) |
 | Rules and rollout | order undefined | order undefined | kill switch → rules (all) → rollout among the eligible |
 | Versions | string compare | string compare | numeric (`2.10.0` > `2.9.0`); malformed never matches |
+| Overrides | — | — | persisted (drift v3), win over everything, source `override`, kept by `clearCache` |
+| Debug tools | a dashboard | a dashboard + a network toggle + a user id | every flag explained (rules, bucket), `evaluateFor` another user, a server console, counters |
 | CI | `android-ci.yml` | `ios-ci.yml` | `flutter-ci.yml` (+ `pub publish --dry-run`, `dart doc`) |
 
 The full table (the cache, rollouts, targeting, refresh) grows with the phases.
@@ -281,6 +291,7 @@ The full table (the cache, rollouts, targeting, refresh) grows with the phases.
 - [Phase 2 — Storage + Cache Layer](docs/PHASE_2_SUMMARY.md)
 - [Phase 3 — Remote Config Pipeline](docs/PHASE_3_SUMMARY.md)
 - [Phase 4 — Rollouts + Targeting](docs/PHASE_4_SUMMARY.md)
+- [Phase 5 — Dashboard + SDK Features](docs/PHASE_5_SUMMARY.md)
 - The SDK's own [README](packages/flagkit/README.md) and [CHANGELOG](packages/flagkit/CHANGELOG.md)
 
 ---

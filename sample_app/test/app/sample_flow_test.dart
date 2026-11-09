@@ -90,6 +90,9 @@ void main() {
     await settle(tester);
     final requests = testServer.stats.requests;
 
+    // Tall enough to build the whole Dashboard: the switch is far down.
+    tester.view.physicalSize = const Size(390 * 3, 3000 * 3);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Device offline'));
     await tester.pumpAndSettle();
     expect(find.text('Offline (simulated)'), findsOneWidget);
@@ -207,6 +210,125 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+  });
+
+  group('the Dashboard\'s tools', () {
+    /// The Dashboard, tall enough to build every section.
+    Future<void> openDashboard(
+      WidgetTester tester, {
+      String path = '/dashboard',
+    }) async {
+      await pumpSample(tester, initialLocation: path);
+      // Taller would fail to rasterize the page transitions.
+      tester.view.physicalSize = const Size(390 * 3, 5000 * 3);
+      await settle(tester);
+    }
+
+    testWidgets('the server console switches a flag off; Refresh brings it', (
+      tester,
+    ) async {
+      await openDashboard(tester);
+
+      await tester.tap(find.widgetWithText(SwitchListTile, 'new_home_screen'));
+      await settle(tester);
+      expect(testServer.flags.first['enabled'], isFalse);
+      // Nothing in the app yet: a server change waits for a refresh.
+      expect(FlagKit.isEnabled('new_home_screen'), isTrue);
+
+      await tester.tap(find.text('Refresh'));
+      await settle(tester);
+      expect(FlagKit.isEnabled('new_home_screen'), isFalse);
+      tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+      await tester.tapAndSettle(destination('Home'));
+      expect(find.text('Stories'), findsOneWidget);
+    });
+
+    testWidgets('an override from a flag\'s page wins, and is cleared', (
+      tester,
+    ) async {
+      await openDashboard(tester);
+
+      // The Flags list's row (the console, further down, lists it too).
+      await tester.tap(find.text('new_checkout').first);
+      await settle(tester);
+      expect(find.text('Rolled out to 25 %'), findsOneWidget);
+      expect(
+        find.text(
+          'Your bucket is 4486 of 10,000: not below 2500, so you\'re out.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Override: on'));
+      await settle(tester);
+      expect(find.text('Overridden with true.'), findsOneWidget);
+      expect(FlagKit.detail('new_checkout').source, FlagSource.override);
+
+      tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+      await tester.tapAndSettle(destination('Checkout'));
+      expect(find.byType(Stepper), findsNothing, reason: 'the one-page one');
+
+      // Back on the Dashboard's tab: the flag's page is still open.
+      await tester.tapAndSettle(destination('Dashboard'));
+      await tester.ensureVisible(find.text('Clear override'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Clear override'));
+      await settle(tester);
+      expect(
+        FlagKit.detail('new_checkout').reason,
+        EvaluationReason.rolloutExcluded,
+      );
+    });
+
+    testWidgets('Clear cache: defaults until Refresh brings the flags', (
+      tester,
+    ) async {
+      await openDashboard(tester);
+
+      await tester.tap(find.text('Clear cache'));
+      await settle(tester);
+      await tester.tap(find.text('Clear'));
+      await settle(tester);
+      expect(find.text('Empty'), findsOneWidget);
+      expect(FlagKit.detail('feed_page_size').source, FlagSource.defaultValue);
+
+      await tester.tap(find.text('Refresh'));
+      await settle(tester);
+      expect(FlagKit.getInt('feed_page_size', 20), 12);
+    });
+
+    testWidgets('Try a user shows the rollout at work', (tester) async {
+      await openDashboard(tester);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('tryUserId')),
+        userInRollout,
+      );
+      await settle(tester);
+
+      expect(
+        find.textContaining('you\'re in the rollout (bucket 404'),
+        findsOneWidget,
+      );
+      expect(FlagKit.context.userId, isNull, reason: 'the app\'s user stays');
+    });
+
+    testWidgets('a link to a flag opens it over the Dashboard', (tester) async {
+      await openDashboard(tester, path: '/dashboard/flags/home_theme');
+      expect(find.text('country is one of PK, AE'), findsOneWidget);
+
+      await tester.pageBack();
+      await settle(tester);
+      expect(appBarTitled('Dashboard'), findsOneWidget);
+    });
+
+    testWidgets('a link to a flag that\'s gone says so', (tester) async {
+      await openDashboard(tester, path: '/dashboard/flags/gone');
+      expect(find.text('Flag not found'), findsOneWidget);
+
+      await tester.tap(find.text('Back to the Dashboard'));
+      await settle(tester);
+      expect(appBarTitled('Dashboard'), findsOneWidget);
     });
   });
 }

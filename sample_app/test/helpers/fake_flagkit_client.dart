@@ -113,7 +113,7 @@ final class FakeFlagKitClient implements FlagKitClient {
   Future<void> clearCache() async {}
 
   @override
-  final FakeFlagKitDebug debug = FakeFlagKitDebug();
+  late final FakeFlagKitDebug debug = FakeFlagKitDebug(this);
 
   @override
   Future<void> shutdown() async {
@@ -122,9 +122,54 @@ final class FakeFlagKitClient implements FlagKitClient {
   }
 }
 
-/// [FlagKitDebug] whose stats a test sends.
+/// [FlagKitDebug] whose stats and flag lists a test sends; its answers
+/// for one flag are the client's, and overrides are only recorded.
 final class FakeFlagKitDebug implements FlagKitDebug {
+  FakeFlagKitDebug(this._client);
+
+  final FakeFlagKitClient _client;
   final _stats = StreamController<FlagKitStats>.broadcast();
+  final _flags = StreamController<List<FlagDetail>>.broadcast();
+
+  /// Sends [flags] to `watchFlags` listeners.
+  void emitFlags([List<FlagDetail> flags = const []]) => _flags.add(flags);
+
+  @override
+  Stream<List<FlagDetail>> watchFlags() => _flags.stream;
+
+  @override
+  List<FeatureFlag> definitions = [];
+
+  /// Every context `evaluateFor` was asked about.
+  final asked = <EvaluationContext>[];
+
+  @override
+  FlagDetail evaluateFor(String key, EvaluationContext context) {
+    asked.add(context);
+    return _client.detail(key);
+  }
+
+  @override
+  FlagExplanation explain(String key, {EvaluationContext? context}) =>
+      FlagExplanation(
+        detail: _client.detail(key),
+        context: context ?? _client.context,
+        flag: definitions.where((flag) => flag.key == key).firstOrNull,
+        overrideValue: overrides[key],
+      );
+
+  /// The overrides set, by key.
+  final overrides = <String, FlagValue>{};
+
+  @override
+  Future<void> setOverride(String key, FlagValue value) async =>
+      overrides[key] = value;
+
+  @override
+  Future<void> clearOverride(String key) async => overrides.remove(key);
+
+  @override
+  Future<void> clearOverrides() async => overrides.clear();
 
   /// Sends [stats] to the listeners.
   void emit(FlagKitStats stats) => _stats.add(stats);
@@ -136,5 +181,8 @@ final class FakeFlagKitDebug implements FlagKitDebug {
   Stream<List<RefreshRecord>> watchRefreshes({int limit = 10}) =>
       const Stream.empty();
 
-  Future<void> close() => _stats.close();
+  Future<void> close() async {
+    await _stats.close();
+    await _flags.close();
+  }
 }

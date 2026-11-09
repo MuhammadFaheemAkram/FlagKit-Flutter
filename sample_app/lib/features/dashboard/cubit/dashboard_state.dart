@@ -25,5 +25,8 @@ abstract class DashboardState with _$DashboardState {
     /// one shows its result once.
     RefreshSummary? lastResult,
     @Default(0) int refreshCount,
+
+    /// The newest refreshes, newest first.
+    @Default(<LastRefresh>[]) List<LastRefresh> refreshLog,
   }) = _DashboardState;
 }

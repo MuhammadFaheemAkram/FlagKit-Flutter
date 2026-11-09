@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+/// A flag's kind of value, in the app's words.
+enum FlagKind { onOff, text, wholeNumber, number, json }
+
 /// Where a reading's value came from, in the app's words.
 enum ReadingSource { override, server, cache, appDefault }
 
@@ -27,6 +30,7 @@ final class FlagReading {
     required this.reason,
     this.bucket,
     this.rolloutPercent,
+    this.kind,
   });
 
   /// The flag's key.
@@ -45,6 +49,9 @@ final class FlagReading {
   /// For a rolled-out flag: the share of eligible users who get it.
   final double? rolloutPercent;
 
+  /// The flag's kind of value, when FlagKit knows the flag.
+  final FlagKind? kind;
+
   @override
   bool operator ==(Object other) =>
       other is FlagReading &&
@@ -53,14 +60,16 @@ final class FlagReading {
       other.source == source &&
       other.reason == reason &&
       other.bucket == bucket &&
-      other.rolloutPercent == rolloutPercent;
+      other.rolloutPercent == rolloutPercent &&
+      other.kind == kind;
 
   @override
   int get hashCode =>
-      Object.hash(key, value, source, reason, bucket, rolloutPercent);
+      Object.hash(key, value, source, reason, bucket, rolloutPercent, kind);
 
   @override
   String toString() =>
       'FlagReading($key: $value, $source, $reason'
-      '${bucket == null ? '' : ', bucket $bucket of $rolloutPercent %'})';
+      '${bucket == null ? '' : ', bucket $bucket of $rolloutPercent %'}'
+      '${kind == null ? '' : ', ${kind!.name}'})';
 }

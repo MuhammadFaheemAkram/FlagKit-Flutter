@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flagkit_sample/core/common/start_with.dart';
 import 'package:flagkit_sample/domain/context/user_context.dart';
 import 'package:flagkit_sample/domain/debug/flags_debug.dart';
+import 'package:flagkit_sample/domain/demo/demo_server.dart';
 import 'package:flagkit_sample/domain/flags/app_flags.dart';
 import 'package:flagkit_sample/domain/flags/home_config.dart';
 import 'package:flagkit_sample/domain/network/device_network.dart';
@@ -142,9 +144,108 @@ final class FakeFlagsDebug implements FlagsDebug {
     return refreshResult;
   }
 
+  /// The refresh log a test sends.
+  final _log = StreamController<List<LastRefresh>>.broadcast();
+  void log(List<LastRefresh> refreshes) => _log.add(refreshes);
+
+  @override
+  Stream<List<LastRefresh>> watchRefreshLog() => _log.stream;
+
+  int cacheClears = 0;
+
+  @override
+  Future<void> clearCache() async => cacheClears++;
+
+  /// What [inspect] says, by key; `null` for a flag not in it.
+  final inspections = <String, FlagInspection>{};
+
+  @override
+  FlagInspection? inspect(String key) => inspections[key];
+
+  /// What [readFor] returns, and every id it was asked.
+  List<FlagReading> readForResult = const [];
+  final triedUsers = <String>[];
+
+  @override
+  List<FlagReading> readFor(String userId) {
+    triedUsers.add(userId);
+    return readForResult;
+  }
+
+  /// The overrides set (key → text); [overrideError] makes them fail.
+  final overrides = <String, String>{};
+  String? overrideError;
+
+  @override
+  Future<String?> setOverride(String key, String text) async {
+    if (overrideError case final error?) return error;
+    overrides[key] = text;
+    return null;
+  }
+
+  @override
+  Future<void> clearOverride(String key) async => overrides.remove(key);
+
+  int overrideClears = 0;
+
+  @override
+  Future<void> clearOverrides() async {
+    overrideClears++;
+    overrides.clear();
+  }
+
   Future<void> close() async {
     await _changes.close();
     await _cache.close();
+    await _log.close();
+  }
+}
+
+/// [DemoServer] in memory: the flags and knobs a test sets, and the calls.
+final class FakeDemoServer implements DemoServer {
+  List<ServerFlag> flags = const [];
+  ServerKnobs knobs = const ServerKnobs();
+  final _flags = StreamController<List<ServerFlag>>.broadcast();
+  final _knobs = StreamController<ServerKnobs>.broadcast();
+
+  /// Every console call, in words: "enabled new_checkout false".
+  final calls = <String>[];
+
+  void sendFlags(List<ServerFlag> value) => _flags.add(flags = value);
+
+  @override
+  Stream<List<ServerFlag>> watchFlags() =>
+      startWith(() => flags, _flags.stream);
+
+  @override
+  Stream<ServerKnobs> watchKnobs() => startWith(() => knobs, _knobs.stream);
+
+  @override
+  void setEnabled(String key, bool enabled) =>
+      calls.add('enabled $key $enabled');
+
+  @override
+  void setRollout(String key, double? percent) =>
+      calls.add('rollout $key $percent');
+
+  @override
+  void setTheme(String theme) => calls.add('theme $theme');
+
+  @override
+  void setFailures(ServerFailures failures) {
+    calls.add('failures ${failures.name}');
+    _knobs.add(knobs = ServerKnobs(failures: failures, speed: knobs.speed));
+  }
+
+  @override
+  void setSpeed(ServerSpeed speed) {
+    calls.add('speed ${speed.name}');
+    _knobs.add(knobs = ServerKnobs(failures: knobs.failures, speed: speed));
+  }
+
+  Future<void> close() async {
+    await _flags.close();
+    await _knobs.close();
   }
 }
 

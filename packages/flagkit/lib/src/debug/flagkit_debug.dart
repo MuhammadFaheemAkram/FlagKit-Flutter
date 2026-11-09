@@ -1,65 +1,53 @@
-import 'package:clock/clock.dart';
-import 'package:flagkit/src/cache/cache_policy.dart';
-import 'package:flagkit/src/config/flagkit_config.dart';
+import 'package:flagkit/src/model/evaluation_context.dart';
+import 'package:flagkit/src/model/feature_flag.dart';
+import 'package:flagkit/src/model/flag_detail.dart';
+import 'package:flagkit/src/model/flag_explanation.dart';
+import 'package:flagkit/src/model/flag_value.dart';
 import 'package:flagkit/src/model/flagkit_stats.dart';
 import 'package:flagkit/src/model/refresh_record.dart';
-import 'package:flagkit/src/storage/flagkit_database.dart';
-import 'package:flagkit/src/storage/refresh_mapper.dart';
-import 'package:meta/meta.dart';
 
 /// Tools for a debug screen and for support: what the SDK holds, and why.
 /// Kept apart from the everyday API (`FlagKit.debug`), so an app's screens
 /// never depend on them.
 abstract interface class FlagKitDebug {
-  /// The SDK's state now, then again after every change to the cache or
-  /// the refresh log.
+  /// The SDK's state now, then again after every change: the cache, the
+  /// refresh log, the overrides, the network, a refresh starting or
+  /// ending.
   Stream<FlagKitStats> watchStats();
 
   /// The newest [limit] refreshes, newest first: now, then after every
   /// refresh.
   Stream<List<RefreshRecord>> watchRefreshes({int limit = 10});
-}
 
-/// [FlagKitDebug] over the database: one watched query, so the stats
-/// update with every write.
-@internal
-final class DatabaseDebug implements FlagKitDebug {
-  DatabaseDebug(this._database, this._config, {Clock? clock})
-    : _clock = clock ?? const Clock();
+  /// Every flag the SDK can answer (each definition, and each override of
+  /// a flag the server doesn't send), by key, evaluated for the current
+  /// context:
+  /// now, then after every refresh, context change or override, even when
+  /// only a reason or a bucket changed.
+  Stream<List<FlagDetail>> watchFlags();
 
-  final FlagKitDatabase _database;
-  final FlagKitConfig _config;
-  final Clock _clock;
+  /// The server's definitions, as cached now, by key.
+  List<FeatureFlag> get definitions;
 
-  @override
-  Stream<FlagKitStats> watchStats() =>
-      _database.watchStatsRow().asyncMap((row) async {
-        final fetchedAt = DateTime.tryParse(
-          row.readNullable<String>('fetched_at') ?? '',
-        )?.toUtc();
-        return FlagKitStats(
-          cacheStatus: cacheStatusOf(
-            fetchedAt: fetchedAt,
-            now: _clock.now().toUtc(),
-            refreshInterval: _config.refreshInterval,
-            cacheExpiration: _config.cacheExpiration,
-          ),
-          flagCount: row.read<int>('flag_count'),
-          anonymousId: row.readNullable<String>('anonymous_id') ?? '',
-          fetchedAt: fetchedAt,
-          configVersion: int.tryParse(
-            row.readNullable<String>('config_version') ?? '',
-          ),
-          lastRefresh: switch (row.readNullable<int>('last_refresh')) {
-            final id? => (await _database.refreshDao.byId(id))?.toRecord(),
-            null => null,
-          },
-        );
-      });
+  /// What [key] would be for [context], without changing the current one:
+  /// "what would this user get?". Overrides still win: they apply to
+  /// every user on this device.
+  FlagDetail evaluateFor(String key, EvaluationContext context);
 
-  @override
-  Stream<List<RefreshRecord>> watchRefreshes({int limit = 10}) => _database
-      .refreshDao
-      .watchNewest(limit: limit)
-      .map((rows) => [for (final row in rows) row.toRecord()]);
+  /// Everything behind [key]'s answer for [context] (the current context
+  /// by default): the detail, the definition, the override, and each
+  /// rule with whether it matches.
+  FlagExplanation explain(String key, {EvaluationContext? context});
+
+  /// Overrides [key] with [value] on this device: it wins over the
+  /// server's definition (source `override`), and is kept across restarts
+  /// and `clearCache` until cleared. Throws an [ArgumentError] for a key
+  /// that isn't valid, or a value of another type than the flag's.
+  Future<void> setOverride(String key, FlagValue value);
+
+  /// Removes [key]'s override.
+  Future<void> clearOverride(String key);
+
+  /// Removes every override.
+  Future<void> clearOverrides();
 }

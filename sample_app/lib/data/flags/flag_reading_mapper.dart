@@ -18,12 +18,7 @@ final _defaults = <String, String>{
 FlagReading readingOf(FlagDetail detail) => FlagReading(
   key: detail.key,
   value: detail.value?.toString() ?? _defaults[detail.key] ?? '—',
-  source: switch (detail.source) {
-    FlagSource.override => ReadingSource.override,
-    FlagSource.remote => ReadingSource.server,
-    FlagSource.cache => ReadingSource.cache,
-    FlagSource.defaultValue => ReadingSource.appDefault,
-  },
+  source: sourceOf(detail.source),
   reason: switch (detail.reason) {
     EvaluationReason.override => ReadingReason.override,
     EvaluationReason.off => ReadingReason.switchedOff,
@@ -38,4 +33,23 @@ FlagReading readingOf(FlagDetail detail) => FlagReading(
   },
   bucket: detail.bucket,
   rolloutPercent: detail.rolloutPercent,
+  kind: kindOf(detail.value?.type),
 );
+
+/// [type] in the app's words.
+FlagKind? kindOf(FlagType? type) => switch (type) {
+  FlagType.boolean => FlagKind.onOff,
+  FlagType.string => FlagKind.text,
+  FlagType.integer => FlagKind.wholeNumber,
+  FlagType.decimal => FlagKind.number,
+  FlagType.json => FlagKind.json,
+  null => null,
+};
+
+/// [source] in the app's words.
+ReadingSource sourceOf(FlagSource source) => switch (source) {
+  FlagSource.override => ReadingSource.override,
+  FlagSource.remote => ReadingSource.server,
+  FlagSource.cache => ReadingSource.cache,
+  FlagSource.defaultValue => ReadingSource.appDefault,
+};

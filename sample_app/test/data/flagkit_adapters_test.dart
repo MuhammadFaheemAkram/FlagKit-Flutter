@@ -133,6 +133,7 @@ void main() {
           value: '"modern"',
           source: ReadingSource.server,
           reason: ReadingReason.onForEveryone,
+          kind: FlagKind.text,
         ),
       );
     });
@@ -266,12 +267,12 @@ void main() {
       expect(seen.first?.at, at);
     });
 
-    test('watch() fires on any change', () async {
+    test('watch() follows every flag list (a new bucket too)', () async {
       var fired = 0;
       final subscription = debug.watch().listen((_) => fired++);
       addTearDown(subscription.cancel);
 
-      client.emitChanges({'anything'});
+      client.debug.emitFlags();
       await pumpEventQueue();
 
       expect(fired, 1);

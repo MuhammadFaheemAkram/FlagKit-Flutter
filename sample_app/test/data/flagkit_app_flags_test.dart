@@ -178,6 +178,7 @@ void main() {
           reason: ReadingReason.outsideRollout,
           bucket: 4486,
           rolloutPercent: 25,
+          kind: FlagKind.onOff,
         ),
       );
     });

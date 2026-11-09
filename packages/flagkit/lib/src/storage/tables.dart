@@ -109,3 +109,30 @@ class Refreshes extends Table {
     "CHECK (started_at GLOB '*Z' AND finished_at GLOB '*Z')",
   ];
 }
+
+/// Local overrides: a value set on this device for a flag, which wins over
+/// everything else (schema v3). A debug tool, kept across restarts and
+/// across `clearCache` until it's cleared.
+@internal
+@DataClassName('OverrideRow')
+class Overrides extends Table {
+  TextColumn get key => text()();
+
+  TextColumn get type => text()();
+
+  /// The value, as JSON.
+  TextColumn get value => text()();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {key};
+
+  @override
+  List<String> get customConstraints => [
+    'CHECK (length(key) BETWEEN 1 AND 64)',
+    "CHECK (type IN ('boolean', 'string', 'int', 'double', 'json'))",
+    'CHECK (json_valid(value))',
+    "CHECK (created_at GLOB '*Z')",
+  ];
+}

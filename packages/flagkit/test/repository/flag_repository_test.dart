@@ -172,4 +172,52 @@ void main() {
     expect(snapshot.flags.keys, ['good']);
     expect(logs.at(LogLevel.warning).single, contains('1 cached definitions'));
   });
+
+  group('overrides', () {
+    test('set, replaced, removed and cleared: on disk first', () async {
+      final repository = await open();
+      await repository.setOverride('a', const IntValue(1), testNow);
+      await repository.setOverride('a', const IntValue(2), testNow);
+      await repository.setOverride('b', const BoolValue(true), testNow);
+      expect(repository.overrides, {
+        'a': const IntValue(2),
+        'b': const BoolValue(true),
+      });
+      expect((await open()).overrides, repository.overrides);
+
+      await repository.removeOverride('a');
+      expect((await open()).overrides.keys, ['b']);
+
+      await repository.clearOverrides();
+      expect(repository.overrides, isEmpty);
+      expect((await open()).overrides, isEmpty);
+    });
+
+    test(
+      'kept by clear: they\'re the developer\'s, not the server\'s',
+      () async {
+        final repository = await open();
+        await repository.setOverride('a', const IntValue(1), testNow);
+
+        await repository.clear();
+
+        expect(repository.overrides, {'a': const IntValue(1)});
+        expect((await open()).overrides, {'a': const IntValue(1)});
+      },
+    );
+
+    test('read-only, and an unreadable row is skipped', () async {
+      await db.customStatement(
+        'INSERT INTO overrides (key, type, value, created_at) '
+        "VALUES ('bad', 'int', '\"x\"', '2026-11-04T09:41:00.000Z')",
+      );
+      final repository = await open();
+
+      expect(repository.overrides, isEmpty);
+      expect(
+        () => repository.overrides['a'] = const IntValue(1),
+        throwsUnsupportedError,
+      );
+    });
+  });
 }

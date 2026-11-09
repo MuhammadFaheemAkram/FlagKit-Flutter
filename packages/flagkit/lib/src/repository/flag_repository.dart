@@ -1,9 +1,11 @@
 import 'package:flagkit/src/model/flag_source.dart';
+import 'package:flagkit/src/model/flag_value.dart';
 import 'package:flagkit/src/repository/flag_definition.dart';
 import 'package:flagkit/src/repository/flag_snapshot.dart';
 import 'package:flagkit/src/storage/flag_mapper.dart';
 import 'package:flagkit/src/storage/flagkit_database.dart';
 import 'package:flagkit/src/storage/meta_keys.dart';
+import 'package:flagkit/src/storage/override_mapper.dart';
 import 'package:flagkit/src/util/flagkit_logger.dart';
 import 'package:meta/meta.dart';
 
@@ -20,10 +22,12 @@ final class FlagRepository {
     this._logger,
     this._snapshot,
     this.anonymousId,
+    this._overrides,
   );
 
   /// Loads the cache: this install's anonymous id (created, and stored, on
-  /// the first start) and every definition that can still be read.
+  /// the first start), every definition that can still be read, and the
+  /// local overrides.
   static Future<FlagRepository> open(
     FlagKitDatabase database, {
     required FlagKitLogger logger,
@@ -56,8 +60,21 @@ final class FlagRepository {
         await meta.read(MetaKeys.configVersion) ?? '',
       ),
     );
-    logger.debug('cache: ${flags.length} flags, fetched ${snapshot.fetchedAt}');
-    return FlagRepository._(database, logger, snapshot, anonymousId);
+    final overrides = <String, FlagValue>{
+      for (final row in await database.overrideDao.all())
+        row.key: ?row.toValue(),
+    };
+    logger.debug(
+      'cache: ${flags.length} flags, fetched ${snapshot.fetchedAt}; '
+      '${overrides.length} overrides',
+    );
+    return FlagRepository._(
+      database,
+      logger,
+      snapshot,
+      anonymousId,
+      Map.unmodifiable(overrides),
+    );
   }
 
   final FlagKitDatabase _database;
@@ -69,6 +86,29 @@ final class FlagRepository {
 
   /// What reads see now.
   FlagSnapshot get snapshot => _snapshot;
+
+  Map<String, FlagValue> _overrides;
+
+  /// The local overrides, by key: they win over every definition.
+  Map<String, FlagValue> get overrides => _overrides;
+
+  /// Overrides [key] with [value] from [at] on: written, then swapped in.
+  Future<void> setOverride(String key, FlagValue value, DateTime at) async {
+    await _database.overrideDao.save(overrideRow(key, value, at));
+    _overrides = Map.unmodifiable({..._overrides, key: value});
+  }
+
+  /// Removes [key]'s override, if any.
+  Future<void> removeOverride(String key) async {
+    await _database.overrideDao.remove(key);
+    _overrides = Map.unmodifiable({..._overrides}..remove(key));
+  }
+
+  /// Removes every override.
+  Future<void> clearOverrides() async {
+    await _database.overrideDao.clear();
+    _overrides = const {};
+  }
 
   /// Makes the cache exactly [definitions], fetched at [fetchedAt] as the
   /// server's [configVersion]: the definitions, the deletion of the ones
@@ -111,6 +151,7 @@ final class FlagRepository {
 
   /// Forgets the cached definitions, when they were fetched and their
   /// version. The anonymous id stays: clearing a cache isn't a new install.
+  /// So do the overrides: they're the developer's, not the server's.
   Future<FlagSnapshot> clear() async {
     await _database.transaction(() async {
       await _database.flagDao.clear();
